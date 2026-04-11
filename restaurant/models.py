@@ -378,3 +378,40 @@ class KPITarget(models.Model):
 
     def __str__(self):
         return f"KPI {self.month}/{self.year} — FC {self.food_cost_target_pct}%"
+
+
+# =============================================================================
+# Phase 2 — PriceHistory
+# =============================================================================
+
+class PriceHistory(models.Model):
+    class ChangeReason(models.TextChoices):
+        MARKET = 'market', 'ราคาตลาด'
+        SEASONAL = 'seasonal', 'ตามฤดูกาล'
+        SUPPLIER = 'supplier', 'เปลี่ยน supplier'
+        WAR = 'war', 'สงคราม/วิกฤต'
+        OTHER = 'other', 'อื่นๆ'
+
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='price_histories')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='price_histories')
+    old_price = models.DecimalField(max_digits=10, decimal_places=2)
+    new_price = models.DecimalField(max_digits=10, decimal_places=2)
+    change_pct = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    reason = models.CharField(max_length=20, choices=ChangeReason.choices, default=ChangeReason.MARKET)
+    notes = models.TextField(blank=True)
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.SET_NULL, null=True, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'restaurant_pricehistory'
+        verbose_name_plural = 'Price histories'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.item.name}: ฿{self.old_price} → ฿{self.new_price} ({self.change_pct:+.1f}%)"
+
+    def save(self, *args, **kwargs):
+        if self.old_price:
+            self.change_pct = ((self.new_price - self.old_price) / self.old_price) * 100
+        super().save(*args, **kwargs)

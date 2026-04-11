@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Smart Reorder — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .check-row { transition: background 0.15s; }
+    .check-row:has(input:checked) { background: #fef9f3; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
+            <span class="text-lg">🍽️</span>
+        </a>
+        <a href="/dashboard/" class="sidebar-icon" title="Dashboard"><span class="text-sm">📊</span></a>
+        <a href="#" class="sidebar-icon" title="POS"><span class="text-sm">💳</span></a>
+        <a href="/stock/" class="sidebar-icon" title="Stock"><span class="text-sm">📦</span></a>
+        <div class="sidebar-icon active" title="Procurement"><span class="text-white text-sm">🛒</span></div>
+        <a href="#" class="sidebar-icon" title="Food Cost"><span class="text-sm">🍽️</span></a>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
+        <div class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-sm font-bold">
+            {{ request.user.first_name|first|default:"A" }}
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Smart Reorder</h1>
+                <p class="text-gray-400 mt-1">วัตถุดิบที่ต้องสั่งซื้อ — {{ total_items }} รายการ</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/procurement/po/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50 transition">
+                    ดู PO ทั้งหมด
+                </a>
+                <button onclick="createPOs()" id="btn-create" disabled
+                    class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    สร้างใบสั่งซื้อ
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">ต้องสั่งซื้อ</div>
+                <div class="text-3xl font-extrabold text-orange-500">{{ total_items }}</div>
+                <div class="text-xs text-gray-400 mt-1">รายการ</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">งบประมาณโดยประมาณ</div>
+                <div class="text-3xl font-extrabold text-gray-800">฿{{ total_estimated|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400 mt-1">ราคาทุนรวม</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">เลือกแล้ว</div>
+                <div class="text-3xl font-extrabold text-blue-600" id="selected-count">0</div>
+                <div class="text-xs text-gray-400 mt-1">รายการ</div>
+            </div>
+        </div>
+
+        <!-- Success message -->
+        <div id="success-msg" class="hidden mb-6 card bg-green-50 border border-green-200 text-green-800">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">✅</span>
+                <span class="font-semibold" id="success-text"></span>
+            </div>
+        </div>
+
+        {% if items_data %}
+        <!-- Reorder Table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800">รายการที่ต้องสั่ง</h3>
+                <label class="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
+                    <input type="checkbox" id="select-all" class="rounded"> เลือกทั้งหมด
+                </label>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm" id="reorder-table">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3 w-10"></th>
+                            <th class="pb-3 font-medium">วัตถุดิบ</th>
+                            <th class="pb-3 font-medium">หมวด</th>
+                            <th class="pb-3 font-medium text-right">คงเหลือ</th>
+                            <th class="pb-3 font-medium text-right">Min</th>
+                            <th class="pb-3 font-medium text-right">สั่ง</th>
+                            <th class="pb-3 font-medium">Supplier</th>
+                            <th class="pb-3 font-medium text-right">ราคา/หน่วย</th>
+                            <th class="pb-3 font-medium text-right">รวม</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for d in items_data %}
+                        <tr class="check-row hover:bg-cream-50 transition"
+                            data-item-id="{{ d.item.id }}"
+                            data-cost="{{ d.item.cost_per_unit }}">
+                            <td class="py-3">
+                                <input type="checkbox" class="item-check rounded"
+                                    data-item-id="{{ d.item.id }}">
+                            </td>
+                            <td class="py-3 font-medium text-gray-800">{{ d.item.name }}</td>
+                            <td class="py-3 text-gray-500">{{ d.item.category.name|default:"—" }}</td>
+                            <td class="py-3 text-right font-semibold text-red-500">
+                                {{ d.item.current_stock|floatformat:1 }} {{ d.item.unit.abbreviation }}
+                            </td>
+                            <td class="py-3 text-right text-gray-400">{{ d.item.min_stock|floatformat:1 }}</td>
+                            <td class="py-3 text-right">
+                                <input type="number" step="0.1" min="0"
+                                    class="qty-input w-20 text-right px-2 py-1 border border-cream-200 rounded-lg text-sm"
+                                    value="{{ d.suggested_qty|floatformat:1 }}"
+                                    data-item-id="{{ d.item.id }}">
+                            </td>
+                            <td class="py-3">
+                                <select class="supplier-select text-sm px-2 py-1 border border-cream-200 rounded-lg bg-white"
+                                    data-item-id="{{ d.item.id }}">
+                                    {% for s in suppliers %}
+                                    <option value="{{ s.id }}" {% if d.supplier and s.id == d.supplier.id %}selected{% endif %}>
+                                        {{ s.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td class="py-3 text-right text-gray-500">฿{{ d.item.cost_per_unit|floatformat:2 }}</td>
+                            <td class="py-3 text-right font-semibold row-total">฿{{ d.estimated_cost|floatformat:0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="card text-center py-12">
+            <span class="text-4xl mb-3 block">✅</span>
+            <p class="text-gray-500 text-lg">Stock เพียงพอทุกรายการ — ไม่ต้องสั่งซื้อ</p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+// Select all
+document.getElementById('select-all')?.addEventListener('change', function() {
+    document.querySelectorAll('.item-check').forEach(cb => {
+        cb.checked = this.checked;
+    });
+    updateCount();
+});
+
+// Individual checkboxes
+document.querySelectorAll('.item-check').forEach(cb => {
+    cb.addEventListener('change', updateCount);
+});
+
+// Qty change → update row total
+document.querySelectorAll('.qty-input').forEach(input => {
+    input.addEventListener('input', function() {
+        const row = this.closest('tr');
+        const cost = parseFloat(row.dataset.cost);
+        const qty = parseFloat(this.value) || 0;
+        row.querySelector('.row-total').textContent = '฿' + Math.round(qty * cost).toLocaleString();
+    });
+});
+
+function updateCount() {
+    const checked = document.querySelectorAll('.item-check:checked').length;
+    document.getElementById('selected-count').textContent = checked;
+    document.getElementById('btn-create').disabled = checked === 0;
+}
+
+function createPOs() {
+    const items = [];
+    document.querySelectorAll('.item-check:checked').forEach(cb => {
+        const itemId = cb.dataset.itemId;
+        const row = cb.closest('tr');
+        const qty = row.querySelector('.qty-input').value;
+        const supplierId = row.querySelector('.supplier-select').value;
+        items.push({ item_id: parseInt(itemId), supplier_id: parseInt(supplierId), quantity: parseFloat(qty) });
+    });
+
+    if (items.length === 0) return;
+
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true;
+    btn.textContent = 'กำลังสร้าง...';
+
+    fetch('/procurement/api/create-pos/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ items }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.created) {
+            const names = data.created.map(p => `PO-${p.po_number} (${p.supplier})`).join(', ');
+            document.getElementById('success-text').textContent =
+                `สร้าง ${data.count} ใบสั่งซื้อสำเร็จ: ${names}`;
+            document.getElementById('success-msg').classList.remove('hidden');
+            // Uncheck all
+            document.querySelectorAll('.item-check').forEach(cb => cb.checked = false);
+            document.getElementById('select-all').checked = false;
+            updateCount();
+        } else {
+            alert(data.error || 'เกิดข้อผิดพลาด');
+        }
+        btn.disabled = false;
+        btn.textContent = 'สร้างใบสั่งซื้อ';
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'สร้างใบสั่งซื้อ';
+    });
+}
+</script>
+{% endblock %}

@@ -2,8 +2,8 @@ from django.contrib import admin
 
 from .models import (
     Category, Item, KPITarget, LotBatch, MenuItem, POItem,
-    PurchaseOrder, Recipe, RecipeItem, StockCount, StockMovement,
-    Subcategory, Supplier, Unit, WasteRecord,
+    PriceHistory, PurchaseOrder, Recipe, RecipeItem, StockCount,
+    StockMovement, Subcategory, Supplier, Unit, WasteRecord,
 )
 
 
@@ -82,6 +82,13 @@ class WasteRecordAdmin(admin.ModelAdmin):
 class KPITargetAdmin(admin.ModelAdmin):
     list_display = ['month', 'year', 'food_cost_target_pct', 'labour_cost_target_pct', 'revenue_target']
     list_filter = ['tenant', 'year']
+
+
+@admin.register(PriceHistory)
+class PriceHistoryAdmin(admin.ModelAdmin):
+    list_display = ['item', 'old_price', 'new_price', 'change_pct', 'reason', 'created_at']
+    list_filter = ['tenant', 'reason']
+    readonly_fields = ['change_pct']
 
 
 admin.site.register(StockMovement)

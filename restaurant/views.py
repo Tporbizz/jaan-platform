@@ -1,10 +1,16 @@
+import json
 from decimal import Decimal
 
-from django.db.models import Sum, Count, Q, F
-from django.shortcuts import redirect, render
+from django.db.models import Sum, Count, Q, F, Max
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from .models import Item, LotBatch, WasteRecord, KPITarget, MenuItem, PurchaseOrder
+from .models import (
+    Item, LotBatch, POItem, PriceHistory, PurchaseOrder,
+    StockMovement, Supplier, WasteRecord, KPITarget, MenuItem,
+)
 
 
 def stock_dashboard(request):
@@ -84,3 +90,334 @@ def stock_dashboard(request):
         'items': items[:20],
     }
     return render(request, 'restaurant/stock_dashboard.html', context)
+
+
+# =============================================================================
+# Phase 2.1 — Smart Reorder
+# =============================================================================
+
+def reorder_list(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'restaurant/reorder_list.html', {'no_tenant': True})
+
+    # Items ที่ stock ต่ำกว่า min_stock
+    low_items = Item.objects.filter(
+        tenant=tenant, is_active=True,
+        current_stock__lt=F('min_stock'),
+    ).select_related('category', 'unit', 'default_supplier')
+
+    # เติม suggested supplier จาก last PO ถ้าไม่มี default_supplier
+    items_data = []
+    for item in low_items:
+        supplier = item.default_supplier
+        if not supplier:
+            last_po_item = POItem.objects.filter(
+                item=item, purchase_order__tenant=tenant,
+            ).order_by('-purchase_order__order_date').first()
+            if last_po_item:
+                supplier = last_po_item.purchase_order.supplier
+
+        suggested_qty = item.max_stock - item.current_stock if item.max_stock else item.min_stock * 2
+        items_data.append({
+            'item': item,
+            'supplier': supplier,
+            'suggested_qty': max(suggested_qty, 0),
+            'estimated_cost': max(suggested_qty, 0) * item.cost_per_unit,
+        })
+
+    suppliers = Supplier.objects.filter(tenant=tenant, is_active=True)
+
+    context = {
+        'items_data': items_data,
+        'total_items': len(items_data),
+        'total_estimated': sum(d['estimated_cost'] for d in items_data),
+        'suppliers': suppliers,
+    }
+    return render(request, 'restaurant/reorder_list.html', context)
+
+
+@require_POST
+def create_pos_from_reorder(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    tenant = request.user.tenant
+    if not tenant:
+        return JsonResponse({'error': 'No tenant'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    items_list = data.get('items', [])
+    if not items_list:
+        return JsonResponse({'error': 'No items selected'}, status=400)
+
+    # Group by supplier
+    supplier_groups = {}
+    for entry in items_list:
+        item_id = entry.get('item_id')
+        supplier_id = entry.get('supplier_id')
+        quantity = Decimal(str(entry.get('quantity', 0)))
+
+        if not item_id or not supplier_id or quantity <= 0:
+            continue
+
+        if supplier_id not in supplier_groups:
+            supplier_groups[supplier_id] = []
+        supplier_groups[supplier_id].append({
+            'item_id': item_id,
+            'quantity': quantity,
+        })
+
+    if not supplier_groups:
+        return JsonResponse({'error': 'No valid items'}, status=400)
+
+    # Generate PO number prefix
+    today = timezone.now()
+    po_prefix = today.strftime('%y%m%d')
+    existing_count = PurchaseOrder.objects.filter(
+        tenant=tenant, po_number__startswith=po_prefix,
+    ).count()
+
+    created_pos = []
+    for supplier_id, line_items in supplier_groups.items():
+        supplier = Supplier.objects.get(id=supplier_id, tenant=tenant)
+        existing_count += 1
+        po_number = f"{po_prefix}-{existing_count:02d}"
+
+        po = PurchaseOrder.objects.create(
+            tenant=tenant,
+            po_number=po_number,
+            supplier=supplier,
+            status='draft',
+            order_date=today.date(),
+            created_by=request.user,
+        )
+
+        for li in line_items:
+            item = Item.objects.get(id=li['item_id'], tenant=tenant)
+            POItem.objects.create(
+                purchase_order=po,
+                item=item,
+                quantity=li['quantity'],
+                unit_price=item.cost_per_unit,
+            )
+
+        created_pos.append({
+            'id': po.id,
+            'po_number': po.po_number,
+            'supplier': supplier.name,
+            'item_count': len(line_items),
+            'total': str(po.total_amount),
+        })
+
+    return JsonResponse({'created': created_pos, 'count': len(created_pos)})
+
+
+# =============================================================================
+# Phase 2.2 — Goods Receipt
+# =============================================================================
+
+def goods_receipt(request, po_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    tenant = request.user.tenant
+    po = get_object_or_404(PurchaseOrder, id=po_id, tenant=tenant)
+    po_items = po.items.select_related('item', 'item__unit')
+
+    price_alerts = []
+    success = False
+
+    if request.method == 'POST':
+        today = timezone.now().date()
+        all_received = True
+
+        for po_item in po_items:
+            qty_key = f"qty_{po_item.id}"
+            price_key = f"price_{po_item.id}"
+            expiry_key = f"expiry_{po_item.id}"
+
+            actual_qty = Decimal(request.POST.get(qty_key, '0') or '0')
+            actual_price = Decimal(request.POST.get(price_key, '0') or '0')
+            expiry_date = request.POST.get(expiry_key, '').strip() or None
+
+            if actual_qty <= 0:
+                if po_item.received_quantity < po_item.quantity:
+                    all_received = False
+                continue
+
+            # Update received quantity
+            po_item.received_quantity += actual_qty
+            po_item.save()
+
+            if po_item.received_quantity < po_item.quantity:
+                all_received = False
+
+            # Create LotBatch
+            lot_number = f"PO{po.po_number}-{po_item.item.name[:6]}"
+            LotBatch.objects.create(
+                tenant=tenant,
+                item=po_item.item,
+                lot_number=lot_number,
+                received_date=today,
+                expiry_date=expiry_date or None,
+                quantity=actual_qty,
+                cost_per_unit=actual_price,
+                supplier=po.supplier,
+            )
+
+            # Update item stock
+            po_item.item.current_stock += actual_qty
+            po_item.item.save()
+
+            # Create StockMovement
+            StockMovement.objects.create(
+                tenant=tenant,
+                item=po_item.item,
+                movement_type='in',
+                quantity=actual_qty,
+                unit_cost=actual_price,
+                reference=f"PO-{po.po_number}",
+                created_by=request.user,
+            )
+
+            # Price change detection
+            old_price = po_item.unit_price
+            if actual_price != old_price and old_price > 0:
+                change_pct = ((actual_price - old_price) / old_price) * 100
+
+                PriceHistory.objects.create(
+                    tenant=tenant,
+                    item=po_item.item,
+                    old_price=old_price,
+                    new_price=actual_price,
+                    purchase_order=po,
+                    recorded_by=request.user,
+                )
+
+                # Update item cost
+                po_item.item.cost_per_unit = actual_price
+                po_item.item.save()
+
+                if abs(change_pct) > 5:
+                    price_alerts.append({
+                        'item': po_item.item.name,
+                        'old': old_price,
+                        'new': actual_price,
+                        'pct': round(change_pct, 1),
+                        'war': abs(change_pct) > 10,
+                    })
+
+        # Update PO status
+        if all_received:
+            po.status = 'received'
+            po.received_date = today
+        else:
+            po.status = 'partial'
+        po.save()
+
+        success = True
+
+    context = {
+        'po': po,
+        'po_items': po_items,
+        'price_alerts': price_alerts,
+        'success': success,
+    }
+    return render(request, 'restaurant/goods_receipt.html', context)
+
+
+def po_list(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'restaurant/po_list.html', {'no_tenant': True})
+
+    status_filter = request.GET.get('status', '')
+    pos = PurchaseOrder.objects.filter(tenant=tenant).select_related('supplier', 'created_by')
+
+    if status_filter:
+        pos = pos.filter(status=status_filter)
+
+    context = {
+        'pos': pos,
+        'status_filter': status_filter,
+        'status_choices': PurchaseOrder.Status.choices,
+    }
+    return render(request, 'restaurant/po_list.html', context)
+
+
+# =============================================================================
+# Phase 2.2 — Bulk Price Update
+# =============================================================================
+
+def bulk_price_update(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'restaurant/bulk_price_update.html', {'no_tenant': True})
+
+    items = Item.objects.filter(tenant=tenant, is_active=True).select_related('category', 'unit')
+    updated = []
+    war_mode = False
+
+    if request.method == 'POST':
+        for item in items:
+            new_price_str = request.POST.get(f"price_{item.id}", '').strip()
+            reason = request.POST.get(f"reason_{item.id}", 'market')
+
+            if not new_price_str:
+                continue
+
+            new_price = Decimal(new_price_str)
+            if new_price == item.cost_per_unit:
+                continue
+
+            old_price = item.cost_per_unit
+            change_pct = ((new_price - old_price) / old_price * 100) if old_price else 0
+
+            PriceHistory.objects.create(
+                tenant=tenant,
+                item=item,
+                old_price=old_price,
+                new_price=new_price,
+                reason=reason,
+                recorded_by=request.user,
+            )
+
+            item.cost_per_unit = new_price
+            item.save()
+
+            entry = {
+                'name': item.name,
+                'old': old_price,
+                'new': new_price,
+                'pct': round(change_pct, 1),
+            }
+            updated.append(entry)
+
+            if change_pct > 10:
+                war_mode = True
+
+    # Recent price changes
+    recent_changes = PriceHistory.objects.filter(tenant=tenant)[:20]
+
+    context = {
+        'items': items,
+        'updated': updated,
+        'war_mode': war_mode,
+        'recent_changes': recent_changes,
+        'reasons': PriceHistory.ChangeReason.choices,
+    }
+    return render(request, 'restaurant/bulk_price_update.html', context)

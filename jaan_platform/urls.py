@@ -49,6 +49,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', health_check, name='health_check'),
     path('stock/', include('restaurant.urls', namespace='restaurant')),
+    path('procurement/', include(('restaurant.procurement_urls', 'procurement'), namespace='procurement')),
     path('api/pos/', include('pos.urls', namespace='pos')),
     path('api/events/', include('events.urls', namespace='events')),
     path('api/hr/', include('hr.urls', namespace='hr')),

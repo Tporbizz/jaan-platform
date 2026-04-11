@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Bulk Price Update — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .war-banner { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border-radius: 1rem; padding: 1rem 1.5rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
+            <span class="text-lg">🍽️</span>
+        </a>
+        <a href="/dashboard/" class="sidebar-icon" title="Dashboard"><span class="text-sm">📊</span></a>
+        <a href="/stock/" class="sidebar-icon" title="Stock"><span class="text-sm">📦</span></a>
+        <a href="/procurement/reorder/" class="sidebar-icon" title="Procurement"><span class="text-sm">🛒</span></a>
+        <div class="sidebar-icon active" title="Pricing"><span class="text-white text-sm">💰</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
+        <div class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-sm font-bold">
+            {{ request.user.first_name|first|default:"A" }}
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Bulk Price Update</h1>
+                <p class="text-gray-400 mt-1">อัปเดตราคาวัตถุดิบ — เปลี่ยนเฉพาะรายการที่ต้องการ</p>
+            </div>
+        </div>
+
+        {% if war_mode %}
+        <div class="war-banner mb-6 flex items-center gap-3">
+            <span class="text-3xl">🚨</span>
+            <div>
+                <div class="font-bold text-lg">WAR MODE ALERT</div>
+                <div class="text-sm opacity-90">ราคาวัตถุดิบบางรายการขึ้นมากกว่า 10% — ควรปรับราคาเมนูด้วย</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if updated %}
+        <div class="card mb-6 bg-green-50 border border-green-200">
+            <h3 class="font-bold text-green-800 mb-2">✅ อัปเดตสำเร็จ {{ updated|length }} รายการ</h3>
+            <div class="space-y-1">
+                {% for u in updated %}
+                <div class="text-sm text-green-700">
+                    {{ u.name }}: ฿{{ u.old }} → ฿{{ u.new }}
+                    <span class="{% if u.pct > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                        ({{ u.pct|floatformat:1 }}%)
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Price Update Form -->
+        <form method="post" class="card mb-6">
+            {% csrf_token %}
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800">รายการวัตถุดิบ</h3>
+                <button type="submit"
+                    class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                    บันทึกราคาใหม่
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3 font-medium">วัตถุดิบ</th>
+                            <th class="pb-3 font-medium">หมวด</th>
+                            <th class="pb-3 font-medium">หน่วย</th>
+                            <th class="pb-3 font-medium text-right">ราคาปัจจุบัน</th>
+                            <th class="pb-3 font-medium text-right">ราคาใหม่</th>
+                            <th class="pb-3 font-medium">เหตุผล</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for item in items %}
+                        <tr class="hover:bg-cream-50 transition">
+                            <td class="py-3 font-medium text-gray-800">{{ item.name }}</td>
+                            <td class="py-3 text-gray-500">{{ item.category.name|default:"—" }}</td>
+                            <td class="py-3 text-gray-500">{{ item.unit.abbreviation }}</td>
+                            <td class="py-3 text-right font-semibold">฿{{ item.cost_per_unit|floatformat:2 }}</td>
+                            <td class="py-3 text-right">
+                                <input type="number" step="0.01" min="0"
+                                    name="price_{{ item.id }}"
+                                    placeholder="{{ item.cost_per_unit|floatformat:2 }}"
+                                    class="w-28 text-right px-2 py-1 border border-cream-200 rounded-lg text-sm">
+                            </td>
+                            <td class="py-3">
+                                <select name="reason_{{ item.id }}"
+                                    class="text-sm px-2 py-1 border border-cream-200 rounded-lg bg-white">
+                                    {% for val, label in reasons %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+
+        <!-- Recent Price Changes -->
+        {% if recent_changes %}
+        <div class="card">
+            <h3 class="font-bold text-gray-800 mb-4">ประวัติการเปลี่ยนราคา (ล่าสุด)</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3 font-medium">วันที่</th>
+                            <th class="pb-3 font-medium">วัตถุดิบ</th>
+                            <th class="pb-3 font-medium text-right">ราคาเดิม</th>
+                            <th class="pb-3 font-medium text-right">ราคาใหม่</th>
+                            <th class="pb-3 font-medium text-right">เปลี่ยน</th>
+                            <th class="pb-3 font-medium">เหตุผล</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for ph in recent_changes %}
+                        <tr>
+                            <td class="py-2 text-gray-500">{{ ph.created_at|date:"d/m H:i" }}</td>
+                            <td class="py-2 font-medium text-gray-800">{{ ph.item.name }}</td>
+                            <td class="py-2 text-right">฿{{ ph.old_price|floatformat:2 }}</td>
+                            <td class="py-2 text-right font-semibold">฿{{ ph.new_price|floatformat:2 }}</td>
+                            <td class="py-2 text-right {% if ph.change_pct > 0 %}text-red-600{% else %}text-green-600{% endif %} font-semibold">
+                                {{ ph.change_pct|floatformat:1 }}%
+                            </td>
+                            <td class="py-2 text-gray-500">{{ ph.get_reason_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
