@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Stock Dashboard — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .status-ok { color: #16a34a; background: #f0fdf4; }
+    .status-low { color: #ea580c; background: #fff7ed; }
+    .status-out { color: #dc2626; background: #fef2f2; }
+    .status-over { color: #7c3aed; background: #f5f3ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
+            <span class="text-lg">🍽️</span>
+        </a>
+        <a href="/dashboard/" class="sidebar-icon" title="Dashboard"><span class="text-sm">📊</span></a>
+        <a href="#" class="sidebar-icon" title="POS"><span class="text-sm">💳</span></a>
+        <div class="sidebar-icon active" title="Stock"><span class="text-white text-sm">📦</span></div>
+        <a href="#" class="sidebar-icon" title="Procurement"><span class="text-sm">🛒</span></a>
+        <a href="#" class="sidebar-icon" title="Food Cost"><span class="text-sm">🍽️</span></a>
+        <div class="flex-1"></div>
+        <a href="#" class="sidebar-icon" title="Events"><span class="text-sm">🎪</span></a>
+        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
+        <div class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-sm font-bold">
+            {{ request.user.first_name|first|default:"A" }}
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Stock Dashboard</h1>
+                <p class="text-gray-400 mt-1">คลังวัตถุดิบ — สารข้าว Restaurant</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/admin/restaurant/item/add/" class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                    + เพิ่มวัตถุดิบ
+                </a>
+            </div>
+        </div>
+
+        <!-- KPI Cards Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">วัตถุดิบทั้งหมด</div>
+                <div class="text-3xl font-extrabold text-gray-800">{{ total_items }}</div>
+                <div class="text-xs text-gray-400 mt-1">รายการ</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">มูลค่า Stock</div>
+                <div class="text-3xl font-extrabold text-gray-800">฿{{ total_stock_value|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400 mt-1">ราคาทุนรวม</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">ต้องสั่งซื้อ</div>
+                <div class="text-3xl font-extrabold text-orange-500">{{ below_min_count }}</div>
+                <div class="text-xs text-gray-400 mt-1">ต่ำกว่า min stock</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400 mb-1">Waste เดือนนี้</div>
+                <div class="text-3xl font-extrabold text-red-500">฿{{ waste_cost|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ waste_count }} รายการ</div>
+            </div>
+        </div>
+
+        <!-- Expiry + Low Stock Row -->
+        <div class="grid grid-cols-5 gap-5 mb-6">
+            <!-- Expiry Alerts (3 cols) -->
+            <div class="col-span-3 card-dark">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold">Expiry Alerts</h3>
+                    <div class="flex gap-3 text-xs">
+                        <span class="text-red-400">หมดแล้ว: {{ expired_count }}</span>
+                        <span class="text-orange-400">3 วัน: {{ expiring_3d_count }}</span>
+                        <span class="text-yellow-400">7 วัน: {{ expiring_7d_count }}</span>
+                    </div>
+                </div>
+
+                {% if expired_count == 0 and expiring_3d_count == 0 and expiring_7d_count == 0 %}
+                <div class="text-center py-8">
+                    <span class="text-3xl mb-2 block">✅</span>
+                    <p class="text-gray-400 text-sm">ไม่มีวัตถุดิบใกล้หมดอายุ</p>
+                </div>
+                {% else %}
+                <div class="space-y-2 max-h-[200px] overflow-y-auto">
+                    {% for lot in expired %}
+                    <div class="flex items-center bg-red-500/10 rounded-xl px-4 py-2.5">
+                        <span class="text-xs mr-2">🔴</span>
+                        <span class="text-sm flex-1">{{ lot.item.name }}</span>
+                        <span class="text-xs text-red-400">หมดอายุแล้ว {{ lot.expiry_date }}</span>
+                    </div>
+                    {% endfor %}
+                    {% for lot in expiring_3d %}
+                    <div class="flex items-center bg-orange-500/10 rounded-xl px-4 py-2.5">
+                        <span class="text-xs mr-2">🟠</span>
+                        <span class="text-sm flex-1">{{ lot.item.name }}</span>
+                        <span class="text-xs text-orange-400">อีก {{ lot.days_until_expiry }} วัน</span>
+                    </div>
+                    {% endfor %}
+                    {% for lot in expiring_7d %}
+                    <div class="flex items-center bg-yellow-500/10 rounded-xl px-4 py-2.5">
+                        <span class="text-xs mr-2">🟡</span>
+                        <span class="text-sm flex-1">{{ lot.item.name }}</span>
+                        <span class="text-xs text-yellow-400">อีก {{ lot.days_until_expiry }} วัน</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Stats (2 cols) -->
+            <div class="col-span-2 space-y-4">
+                <div class="card">
+                    <div class="text-xs text-gray-400 mb-1">เมนูที่เปิดขาย</div>
+                    <div class="text-3xl font-extrabold text-gray-800">{{ menu_count }}</div>
+                    <div class="text-xs text-gray-400 mt-1">รายการ</div>
+                </div>
+                <div class="card">
+                    <div class="text-xs text-gray-400 mb-1">PO รอรับของ</div>
+                    <div class="text-3xl font-extrabold text-blue-600">{{ pending_po_count }}</div>
+                    <div class="text-xs text-gray-400 mt-1">ใบสั่งซื้อ</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800">รายการวัตถุดิบ</h3>
+                <span class="text-xs text-gray-400">แสดง {{ items|length }} รายการ</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3 font-medium">ชื่อ</th>
+                            <th class="pb-3 font-medium">หมวด</th>
+                            <th class="pb-3 font-medium text-right">คงเหลือ</th>
+                            <th class="pb-3 font-medium text-right">Min</th>
+                            <th class="pb-3 font-medium text-right">ราคา/หน่วย</th>
+                            <th class="pb-3 font-medium text-right">มูลค่า</th>
+                            <th class="pb-3 font-medium text-center">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for item in items %}
+                        <tr class="hover:bg-cream-50 transition">
+                            <td class="py-3 font-medium text-gray-800">{{ item.name }}</td>
+                            <td class="py-3 text-gray-500">{{ item.category.name|default:"—" }}</td>
+                            <td class="py-3 text-right font-semibold">{{ item.current_stock|floatformat:1 }} {{ item.unit.abbreviation }}</td>
+                            <td class="py-3 text-right text-gray-400">{{ item.min_stock|floatformat:1 }}</td>
+                            <td class="py-3 text-right text-gray-500">฿{{ item.cost_per_unit|floatformat:2 }}</td>
+                            <td class="py-3 text-right font-semibold">฿{{ item.stock_value|floatformat:0 }}</td>
+                            <td class="py-3 text-center">
+                                {% if item.stock_status == 'ok' %}
+                                <span class="status-ok text-xs px-2.5 py-1 rounded-lg font-medium">ปกติ</span>
+                                {% elif item.stock_status == 'low' %}
+                                <span class="status-low text-xs px-2.5 py-1 rounded-lg font-medium">ต่ำ</span>
+                                {% elif item.stock_status == 'out' %}
+                                <span class="status-out text-xs px-2.5 py-1 rounded-lg font-medium">หมด</span>
+                                {% elif item.stock_status == 'over' %}
+                                <span class="status-over text-xs px-2.5 py-1 rounded-lg font-medium">เกิน</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-gray-400">ยังไม่มีวัตถุดิบ — เพิ่มผ่าน Admin หรือรอ seed data</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

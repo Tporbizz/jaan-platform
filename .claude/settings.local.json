@@ -14,7 +14,13 @@
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations)",
       "Bash(python manage.py migrate)",
-      "Bash(timeout 5 python manage.py runserver 0.0.0.0:8000)"
+      "Bash(timeout 5 python manage.py runserver 0.0.0.0:8000)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python manage.py seed_data)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py seed_data)",
+      "Bash(python manage.py check_expiry_alerts --dry-run)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py check_expiry_alerts --dry-run)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py check_expiry_alerts --days 7 --dry-run)"
     ]
   }
 }

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Login — Jaan{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    <!-- Left: Login Form -->
+    <div class="flex-1 flex items-center justify-center p-8">
+        <div class="w-full max-w-sm">
+            <!-- Logo -->
+            <div class="flex items-center gap-3 mb-10">
+                <div class="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center">
+                    <span class="text-white text-xl">🍽️</span>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">Jaan</div>
+                    <div class="text-xs text-gray-400">Restaurant OS</div>
+                </div>
+            </div>
+
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">เข้าสู่ระบบ</h1>
+            <p class="text-gray-400 mb-8">ใส่ username หรือ email เพื่อเข้าใช้งาน</p>
+
+            {% if error %}
+            <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Username / Email</label>
+                    <input type="text" name="username" required autofocus
+                        class="w-full px-4 py-3 bg-white border border-cream-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-jaan-400 focus:border-transparent transition"
+                        placeholder="admin">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                    <input type="password" name="password" required
+                        class="w-full px-4 py-3 bg-white border border-cream-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-jaan-400 focus:border-transparent transition"
+                        placeholder="••••••••">
+                </div>
+                <button type="submit"
+                    class="w-full py-3.5 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition shadow-lg shadow-gray-900/10">
+                    เข้าสู่ระบบ
+                </button>
+            </form>
+
+            <p class="text-center text-xs text-gray-400 mt-8">
+                Jaan v1.0 — สารข้าว Restaurant, Parima Hotel
+            </p>
+        </div>
+    </div>
+
+    <!-- Right: Decorative Panel -->
+    <div class="hidden lg:flex w-[45%] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 items-center justify-center p-12 relative overflow-hidden">
+        <!-- Decorative blobs -->
+        <div class="absolute w-[300px] h-[300px] bg-jaan-400/20 rounded-full blur-[80px] top-20 right-20"></div>
+        <div class="absolute w-[200px] h-[200px] bg-orange-500/10 rounded-full blur-[60px] bottom-32 left-16"></div>
+
+        <div class="text-center z-10">
+            <div class="text-6xl mb-6">🍽️</div>
+            <h2 class="text-3xl font-bold text-white mb-3">จาน</h2>
+            <p class="text-gray-400 text-lg mb-8">Restaurant OS</p>
+            <div class="grid grid-cols-3 gap-4 max-w-xs mx-auto">
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">💳</div>
+                    <div class="text-[10px] text-gray-400">POS</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">📦</div>
+                    <div class="text-[10px] text-gray-400">Stock</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">📊</div>
+                    <div class="text-[10px] text-gray-400">Cost</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">🎪</div>
+                    <div class="text-[10px] text-gray-400">Event</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">🏨</div>
+                    <div class="text-[10px] text-gray-400">Hotel</div>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1">👥</div>
+                    <div class="text-[10px] text-gray-400">HR</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
