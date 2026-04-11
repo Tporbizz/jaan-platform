@@ -1,3 +1,13 @@
-from django.shortcuts import render
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-# Create your views here.
+from .serializers import UserSerializer
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def me(request):
+    """ดึงข้อมูล user ปัจจุบัน"""
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
