@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Kitchen Display — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .ticket { border-radius: 1.25rem; padding: 1.25rem; transition: all 0.2s; }
+    .ticket-pending { background: white; border: 2px solid #fbbf24; }
+    .ticket-in_progress { background: #eff6ff; border: 2px solid #3b82f6; }
+    .ticket-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .timer { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 0.5rem; font-weight: 700; }
+    .timer-ok { background: #f0fdf4; color: #16a34a; }
+    .timer-warn { background: #fff7ed; color: #ea580c; }
+    .timer-critical { background: #fef2f2; color: #dc2626; }
+    .kt-item { padding: 0.5rem 0; border-bottom: 1px solid #f0e0cc; display: flex; align-items: center; gap: 0.5rem; }
+    .kt-item:last-child { border-bottom: none; }
+    .kt-item.done { opacity: 0.4; text-decoration: line-through; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
+            <span class="text-lg">🍽️</span>
+        </a>
+        <a href="/pos/" class="sidebar-icon" title="POS"><span class="text-sm">💳</span></a>
+        <div class="sidebar-icon active" title="Kitchen"><span class="text-white text-sm">👨‍🍳</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-[72px] p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Kitchen Display</h1>
+                <p class="text-gray-400 mt-1">{{ total_tickets }} tickets รอทำ</p>
+            </div>
+            <div class="text-sm text-gray-400">อัปเดตอัตโนมัติทุก 10 วินาที</div>
+        </div>
+
+        {% if tickets %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {% for ticket in tickets %}
+            <div class="ticket ticket-{{ ticket.status }}" data-ticket-id="{{ ticket.id }}">
+                <div class="ticket-header">
+                    <div>
+                        <span class="text-lg font-bold">โต๊ะ {{ ticket.table.number|default:"N/A" }}</span>
+                        <span class="text-xs text-gray-400 ml-2">{{ ticket.ticket_number }}</span>
+                    </div>
+                    {% with mins=ticket.created_at|timesince %}
+                    <span class="timer {% if '0 min' in mins %}timer-ok{% elif 'hour' in mins %}timer-critical{% else %}timer-warn{% endif %}">
+                        {{ mins }}
+                    </span>
+                    {% endwith %}
+                </div>
+
+                <div class="space-y-0">
+                    {% for ti in ticket.items.all %}
+                    <div class="kt-item {% if ti.is_done %}done{% endif %}"
+                         onclick="markItemDone({{ ticket.id }}, {{ ti.id }})"
+                         style="cursor: pointer;">
+                        <span class="text-lg">{% if ti.is_done %}✅{% else %}⬜{% endif %}</span>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold">{{ ti.order_item.menu_item.name }} x{{ ti.quantity }}</div>
+                            {% if ti.special_request %}
+                            <div class="text-xs text-orange-600">⚠️ {{ ti.special_request }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="flex gap-2 mt-3">
+                    {% if ticket.status == 'pending' %}
+                    <button onclick="updateTicket({{ ticket.id }}, 'start')"
+                        class="flex-1 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition">
+                        เริ่มทำ
+                    </button>
+                    {% endif %}
+                    <button onclick="updateTicket({{ ticket.id }}, 'done')"
+                        class="flex-1 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition">
+                        เสร็จทั้งหมด ✅
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-20">
+            <span class="text-6xl mb-4 block">👨‍🍳</span>
+            <p class="text-gray-400 text-xl">ไม่มี ticket รอทำ — พักเบรกได้!</p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+function updateTicket(ticketId, action) {
+    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ action }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) window.location.reload();
+    });
+}
+
+function markItemDone(ticketId, itemId) {
+    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ action: 'item_done', item_id: itemId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) window.location.reload();
+    });
+}
+
+// Auto-refresh every 10s
+setInterval(() => { window.location.reload(); }, 10000);
+</script>
+{% endblock %}

@@ -378,7 +378,62 @@ class Command(BaseCommand):
                     quantity=qty, unit_price=price,
                 )
 
-        self.stdout.write('  ✅ สร้าง PO 1 ใบ\n')
+        self.stdout.write('  ✅ สร้าง PO 1 ใบ')
+
+        # =====================================================================
+        # POS — Tables + Upsell Rules
+        # =====================================================================
+        from pos.models import MenuUpsellRule, Table
+
+        tables_data = [
+            ('1', 'ริมหน้าต่าง', 2, 'ในร้าน', 0, 0),
+            ('2', '', 4, 'ในร้าน', 1, 0),
+            ('3', '', 4, 'ในร้าน', 2, 0),
+            ('4', 'มุมเงียบ', 2, 'ในร้าน', 3, 0),
+            ('5', 'ครอบครัว', 6, 'ในร้าน', 0, 1),
+            ('6', '', 4, 'ในร้าน', 1, 1),
+            ('7', 'ริมน้ำ A', 4, 'ริมน้ำ', 0, 2),
+            ('8', 'ริมน้ำ B', 4, 'ริมน้ำ', 1, 2),
+            ('9', 'ริมน้ำ C', 6, 'ริมน้ำ', 2, 2),
+            ('VIP', 'ห้อง VIP', 10, 'VIP', 0, 3),
+        ]
+        for num, name, cap, zone, gx, gy in tables_data:
+            Table.objects.get_or_create(
+                tenant=tenant, number=num,
+                defaults={'name': name, 'capacity': cap, 'zone': zone,
+                          'grid_x': gx, 'grid_y': gy},
+            )
+        self.stdout.write(f'  ✅ สร้างโต๊ะ {len(tables_data)} โต๊ะ')
+
+        # Upsell rules
+        menu_db = {m.name: m for m in MenuItem.objects.filter(tenant=tenant)}
+        upsell_data = [
+            ('couple', 'แกงพะแนงเนื้อแพะ', 'เมนูพิเศษสำหรับคู่', 10),
+            ('couple', 'เบียร์สิงห์', 'คู่กับอาหารเผ็ด', 8),
+            ('couple', 'ชาเย็น', 'ดื่มหลังมื้อ', 5),
+            ('has_children', 'ไก่ทอดหาดใหญ่', 'เด็กๆ ชอบ', 10),
+            ('has_children', 'โค้ก/เป็ปซี่', 'เครื่องดื่มสำหรับเด็ก', 8),
+            ('has_children', 'ข้าวสวย', 'ข้าวเพิ่มสำหรับเด็ก', 5),
+            ('has_senior', 'แกงส้มกุ้ง', 'น้ำแกงอ่อนโยน', 10),
+            ('has_senior', 'แกงเหลืองปลากะพง', 'ปลานุ่มย่อยง่าย', 8),
+            ('group', 'ปูผัดผงกะหรี่', 'เมนูแชร์กลุ่ม', 10),
+            ('group', 'เบียร์สิงห์', 'จัดเบียร์ให้กลุ่ม', 9),
+            ('group', 'ผัดสะตอกุ้ง', 'จานแชร์ยอดนิยม', 7),
+            ('men_only', 'เบียร์สิงห์', 'เบียร์เย็นๆ', 10),
+            ('men_only', 'ผัดสะตอกุ้ง', 'จานเผ็ดจัดจ้าน', 8),
+            ('default', 'แกงส้มกุ้ง', 'เมนูแนะนำ Best Seller', 10),
+            ('default', 'ข้าวยำ', 'อาหารใต้แท้ๆ', 8),
+            ('default', 'ชาเย็น', 'เครื่องดื่มยอดนิยม', 5),
+        ]
+        for ptype, menu_name, reason, priority in upsell_data:
+            mi = menu_db.get(menu_name)
+            if mi:
+                MenuUpsellRule.objects.get_or_create(
+                    tenant=tenant, profile_type=ptype, menu_item=mi,
+                    defaults={'reason': reason, 'priority': priority},
+                )
+        self.stdout.write(f'  ✅ สร้าง Upsell Rules {len(upsell_data)} rules\n')
+
         self.stdout.write(self.style.SUCCESS(
             '🎉 Mock data พร้อมใช้งาน!\n'
             '   Login: admin / jaan1234\n'

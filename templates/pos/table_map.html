@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}POS — Table Map — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .table-card { border-radius: 1.25rem; padding: 1.25rem; cursor: pointer; transition: all 0.2s; min-h-[120px]; }
+    .table-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .table-empty { background: white; border: 2px dashed #e0d5c8; }
+    .table-occupied { background: #1a1a2e; color: white; }
+    .table-bill { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+    .table-reserved { background: #e0e7ff; border: 2px solid #818cf8; color: #4338ca; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: 1.5rem; padding: 2rem; max-width: 420px; width: 90%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
+            <span class="text-lg">🍽️</span>
+        </a>
+        <a href="/dashboard/" class="sidebar-icon" title="Dashboard"><span class="text-sm">📊</span></a>
+        <div class="sidebar-icon active" title="POS"><span class="text-white text-sm">💳</span></div>
+        <a href="/stock/" class="sidebar-icon" title="Stock"><span class="text-sm">📦</span></a>
+        <a href="/procurement/reorder/" class="sidebar-icon" title="Procurement"><span class="text-sm">🛒</span></a>
+        <div class="flex-1"></div>
+        <a href="/pos/kitchen/" class="sidebar-icon" title="Kitchen"><span class="text-sm">👨‍🍳</span></a>
+        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
+        <div class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-sm font-bold">
+            {{ request.user.first_name|first|default:"A" }}
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 ml-[72px] p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Table Map</h1>
+                <p class="text-gray-400 mt-1">
+                    <span class="text-green-600 font-semibold">{{ empty }}</span> ว่าง ·
+                    <span class="text-blue-600 font-semibold">{{ occupied }}</span> มีลูกค้า ·
+                    {{ total_tables }} โต๊ะทั้งหมด
+                </p>
+            </div>
+            <a href="/pos/kitchen/" class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                Kitchen Display 👨‍🍳
+            </a>
+        </div>
+
+        <!-- Table Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {% for d in tables_data %}
+            <div class="table-card table-{{ d.table.status }}"
+                 onclick="handleTable({{ d.table.id }}, '{{ d.table.status }}', {{ d.order.id|default:'null' }})"
+                 data-table-id="{{ d.table.id }}">
+
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-lg font-bold">{{ d.table.number }}</span>
+                    {% if d.table.status == 'occupied' %}
+                    <span class="text-xs opacity-70">{{ d.duration }} นาที</span>
+                    {% endif %}
+                </div>
+
+                {% if d.table.name %}
+                <div class="text-xs opacity-60 mb-2">{{ d.table.name }}</div>
+                {% endif %}
+
+                {% if d.table.status == 'empty' %}
+                <div class="text-sm text-gray-400">{{ d.table.capacity }} ที่นั่ง</div>
+                <div class="text-xs text-gray-300 mt-1">แตะเพื่อเปิดโต๊ะ</div>
+
+                {% elif d.table.status == 'occupied' %}
+                <div class="text-sm opacity-70">{{ d.guests }} คน</div>
+                <div class="text-2xl font-bold mt-1">฿{{ d.total|floatformat:0 }}</div>
+
+                {% elif d.table.status == 'bill_pending' %}
+                <div class="text-sm opacity-80">รอเก็บเงิน</div>
+                <div class="text-2xl font-bold mt-1">฿{{ d.total|floatformat:0 }}</div>
+
+                {% elif d.table.status == 'reserved' %}
+                <div class="text-sm">จองแล้ว</div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-16">
+                <span class="text-4xl mb-3 block">🪑</span>
+                <p class="text-gray-400">ยังไม่มีโต๊ะ — เพิ่มผ่าน Admin</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<!-- Open Table Modal -->
+<div class="modal-overlay" id="open-modal">
+    <div class="modal">
+        <h3 class="text-xl font-bold mb-4">เปิดโต๊ะ <span id="modal-table-num"></span></h3>
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400">ผู้ชาย</label>
+                    <input type="number" id="inp-men" min="0" value="0"
+                        class="w-full px-3 py-2 border border-cream-200 rounded-xl text-center text-lg">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">ผู้หญิง</label>
+                    <input type="number" id="inp-women" min="0" value="0"
+                        class="w-full px-3 py-2 border border-cream-200 rounded-xl text-center text-lg">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">เด็ก</label>
+                    <input type="number" id="inp-children" min="0" value="0"
+                        class="w-full px-3 py-2 border border-cream-200 rounded-xl text-center text-lg">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">ผู้สูงอายุ</label>
+                    <input type="number" id="inp-senior" min="0" value="0"
+                        class="w-full px-3 py-2 border border-cream-200 rounded-xl text-center text-lg">
+                </div>
+            </div>
+            <div class="text-center text-sm text-gray-400">
+                รวม: <span id="total-guests" class="font-bold text-gray-700">0</span> คน
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 bg-cream-100 text-gray-600 rounded-xl font-semibold">ยกเลิก</button>
+                <button onclick="confirmOpen()" class="flex-1 py-3 bg-gray-900 text-white rounded-xl font-semibold">เปิดโต๊ะ</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+let selectedTableId = null;
+
+// Guest count calculation
+['inp-men','inp-women','inp-children','inp-senior'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateTotal);
+});
+
+function updateTotal() {
+    const m = parseInt(document.getElementById('inp-men').value) || 0;
+    const w = parseInt(document.getElementById('inp-women').value) || 0;
+    const c = parseInt(document.getElementById('inp-children').value) || 0;
+    const s = parseInt(document.getElementById('inp-senior').value) || 0;
+    document.getElementById('total-guests').textContent = m + w + c + s;
+}
+
+function handleTable(tableId, status, orderId) {
+    if (status === 'empty') {
+        selectedTableId = tableId;
+        document.getElementById('modal-table-num').textContent = tableId;
+        document.getElementById('open-modal').classList.add('show');
+    } else if (orderId) {
+        window.location.href = `/pos/order/${orderId}/`;
+    }
+}
+
+function closeModal() {
+    document.getElementById('open-modal').classList.remove('show');
+}
+
+function confirmOpen() {
+    const men = parseInt(document.getElementById('inp-men').value) || 0;
+    const women = parseInt(document.getElementById('inp-women').value) || 0;
+    const children = parseInt(document.getElementById('inp-children').value) || 0;
+    const senior = parseInt(document.getElementById('inp-senior').value) || 0;
+    const total = men + women + children + senior;
+
+    if (total === 0) { alert('กรุณาระบุจำนวนลูกค้า'); return; }
+
+    const form = new FormData();
+    form.append('guest_count', total);
+    form.append('men_count', men);
+    form.append('women_count', women);
+    form.append('children_count', children);
+    form.append('senior_count', senior);
+
+    fetch(`/pos/table/${selectedTableId}/open/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: form,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.order_id) {
+            window.location.href = `/pos/order/${data.order_id}/`;
+        }
+    });
+}
+
+// Auto-refresh every 10s
+setInterval(() => { window.location.reload(); }, 10000);
+</script>
+{% endblock %}

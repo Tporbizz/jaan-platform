@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Payment — Order #{{ order.order_number }} — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .pay-method { border: 2px solid #f0e0cc; border-radius: 1rem; padding: 1rem; cursor: pointer; transition: all 0.15s; text-align: center; }
+    .pay-method:hover { border-color: #d4a017; }
+    .pay-method.active { border-color: #1a1a2e; background: #1a1a2e; color: white; }
+    .numpad-btn { width: 100%; aspect-ratio: 1.5; border-radius: 1rem; font-size: 1.25rem; font-weight: 600; border: 1.5px solid #f0e0cc; background: white; cursor: pointer; transition: all 0.1s; }
+    .numpad-btn:hover { background: #fdf8f3; }
+    .numpad-btn:active { transform: scale(0.95); background: #f0e0cc; }
+    .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .success-overlay.show { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    <!-- Left: Receipt -->
+    <div class="flex-1 p-8 flex items-center justify-center">
+        <div class="card w-full max-w-[400px]">
+            <div class="text-center mb-4">
+                <div class="text-lg font-bold">สารข้าว Restaurant</div>
+                <div class="text-xs text-gray-400">Parima Hotel, Trang</div>
+                <div class="text-xs text-gray-400 mt-1">Order #{{ order.order_number }} · โต๊ะ {{ order.table.number|default:"—" }}</div>
+            </div>
+
+            <div class="border-t border-dashed border-cream-200 my-3"></div>
+
+            <div class="space-y-2">
+                {% for oi in order_items %}
+                <div class="flex justify-between text-sm">
+                    <div>
+                        <span class="text-gray-800">{{ oi.menu_item.name }}</span>
+                        <span class="text-gray-400 ml-1">x{{ oi.quantity }}</span>
+                    </div>
+                    <span class="font-medium">฿{{ oi.line_total|floatformat:0 }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="border-t border-dashed border-cream-200 my-3"></div>
+
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-gray-500">รวม ({{ order_items.count }} รายการ)</span>
+                <span class="font-semibold">฿{{ order.subtotal|floatformat:0 }}</span>
+            </div>
+            {% if order.discount %}
+            <div class="flex justify-between text-sm mb-1 text-green-600">
+                <span>ส่วนลด</span>
+                <span>-฿{{ order.discount|floatformat:0 }}</span>
+            </div>
+            {% endif %}
+
+            <div class="border-t border-cream-200 my-2"></div>
+            <div class="flex justify-between text-xl font-bold">
+                <span>รวมสุทธิ</span>
+                <span class="text-jaan-600">฿{{ order.total|floatformat:0 }}</span>
+            </div>
+
+            <div class="text-center mt-4">
+                <div class="text-xs text-gray-400">{{ order.guest_count }} คน · Avg ฿{{ order.avg_check|floatformat:0 }}/คน</div>
+                <div class="text-xs text-gray-400">{{ order.duration_minutes }} นาที</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Payment -->
+    <div class="w-[420px] bg-white border-l border-cream-200 p-6 flex flex-col" style="height: 100vh;">
+        <a href="/pos/order/{{ order.id }}/" class="text-sm text-gray-400 hover:text-gray-600 mb-4">← กลับหน้า Order</a>
+
+        <h2 class="text-2xl font-bold mb-4">เก็บเงิน</h2>
+
+        <!-- Payment Method -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="pay-method active" data-method="cash" onclick="selectMethod('cash', this)">
+                <div class="text-xl mb-1">💵</div>
+                <div class="text-xs font-semibold">เงินสด</div>
+            </div>
+            <div class="pay-method" data-method="promptpay" onclick="selectMethod('promptpay', this)">
+                <div class="text-xl mb-1">📱</div>
+                <div class="text-xs font-semibold">PromptPay</div>
+            </div>
+            <div class="pay-method" data-method="card" onclick="selectMethod('card', this)">
+                <div class="text-xl mb-1">💳</div>
+                <div class="text-xs font-semibold">บัตร</div>
+            </div>
+            <div class="pay-method" data-method="room_charge" onclick="selectMethod('room_charge', this)">
+                <div class="text-xl mb-1">🏨</div>
+                <div class="text-xs font-semibold">เซ็นห้อง</div>
+            </div>
+            <div class="pay-method" data-method="transfer" onclick="selectMethod('transfer', this)">
+                <div class="text-xl mb-1">🏦</div>
+                <div class="text-xs font-semibold">โอนเงิน</div>
+            </div>
+        </div>
+
+        <!-- Room charge reference -->
+        <div id="ref-input" class="mb-4 hidden">
+            <input type="text" id="reference" placeholder="เลขห้อง / Ref number"
+                class="w-full px-4 py-3 border border-cream-200 rounded-xl text-sm">
+        </div>
+
+        <!-- Amount display -->
+        <div class="card-dark text-center mb-4" id="cash-section">
+            <div class="text-xs opacity-60 mb-1">ยอดชำระ</div>
+            <div class="text-3xl font-bold" id="total-display">฿{{ order.total|floatformat:0 }}</div>
+            <div class="mt-2">
+                <div class="text-xs opacity-60">รับเงิน</div>
+                <div class="text-2xl font-bold text-jaan-400" id="received-display">฿0</div>
+            </div>
+            <div class="mt-2 text-sm" id="change-section" style="display:none;">
+                เงินทอน: <span class="text-green-400 font-bold text-lg" id="change-display">฿0</span>
+            </div>
+        </div>
+
+        <!-- Numpad -->
+        <div class="grid grid-cols-4 gap-2 mb-4" id="numpad">
+            <button class="numpad-btn" onclick="numInput('1')">1</button>
+            <button class="numpad-btn" onclick="numInput('2')">2</button>
+            <button class="numpad-btn" onclick="numInput('3')">3</button>
+            <button class="numpad-btn" onclick="quickAmount(100)" style="font-size:0.9rem;">100</button>
+            <button class="numpad-btn" onclick="numInput('4')">4</button>
+            <button class="numpad-btn" onclick="numInput('5')">5</button>
+            <button class="numpad-btn" onclick="numInput('6')">6</button>
+            <button class="numpad-btn" onclick="quickAmount(500)" style="font-size:0.9rem;">500</button>
+            <button class="numpad-btn" onclick="numInput('7')">7</button>
+            <button class="numpad-btn" onclick="numInput('8')">8</button>
+            <button class="numpad-btn" onclick="numInput('9')">9</button>
+            <button class="numpad-btn" onclick="quickAmount(1000)" style="font-size:0.9rem;">1000</button>
+            <button class="numpad-btn" onclick="numInput('.')">.</button>
+            <button class="numpad-btn" onclick="numInput('0')">0</button>
+            <button class="numpad-btn" onclick="clearAmount()">C</button>
+            <button class="numpad-btn" onclick="exactAmount()" style="font-size:0.9rem;">พอดี</button>
+        </div>
+
+        <div class="mt-auto">
+            <button onclick="processPayment()" id="btn-pay"
+                class="w-full py-4 bg-green-600 text-white text-lg font-bold rounded-xl hover:bg-green-700 transition">
+                ชำระเงิน ✅
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success -->
+<div class="success-overlay" id="success-overlay">
+    <div class="card text-center" style="max-width: 360px;">
+        <div class="text-5xl mb-4">✅</div>
+        <div class="text-2xl font-bold mb-2">ชำระเงินสำเร็จ!</div>
+        <div class="text-gray-500 mb-1" id="success-change"></div>
+        <div class="text-gray-400 text-sm mb-4" id="success-order"></div>
+        <a href="/pos/" class="block w-full py-3 bg-gray-900 text-white font-semibold rounded-xl">
+            กลับหน้า Table Map
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+const orderId = {{ order.id }};
+const orderTotal = {{ order.total }};
+let selectedMethod = 'cash';
+let receivedStr = '';
+
+function selectMethod(method, el) {
+    selectedMethod = method;
+    document.querySelectorAll('.pay-method').forEach(m => m.classList.remove('active'));
+    el.classList.add('active');
+
+    const refInput = document.getElementById('ref-input');
+    const numpad = document.getElementById('numpad');
+    const cashSection = document.getElementById('cash-section');
+
+    if (method === 'room_charge' || method === 'transfer') {
+        refInput.classList.remove('hidden');
+    } else {
+        refInput.classList.add('hidden');
+    }
+
+    if (method === 'cash') {
+        numpad.style.display = '';
+    } else {
+        numpad.style.display = 'none';
+        exactAmount();
+    }
+}
+
+function numInput(char) {
+    receivedStr += char;
+    updateDisplay();
+}
+
+function clearAmount() {
+    receivedStr = '';
+    updateDisplay();
+}
+
+function quickAmount(amt) {
+    receivedStr = String(amt);
+    updateDisplay();
+}
+
+function exactAmount() {
+    receivedStr = String(orderTotal);
+    updateDisplay();
+}
+
+function updateDisplay() {
+    const received = parseFloat(receivedStr) || 0;
+    document.getElementById('received-display').textContent = '฿' + received.toLocaleString();
+    const change = Math.max(received - orderTotal, 0);
+    document.getElementById('change-display').textContent = '฿' + change.toLocaleString();
+    document.getElementById('change-section').style.display = received >= orderTotal ? '' : 'none';
+}
+
+function processPayment() {
+    const received = parseFloat(receivedStr) || orderTotal;
+    if (selectedMethod === 'cash' && received < orderTotal) {
+        alert('จำนวนเงินไม่พอ');
+        return;
+    }
+
+    const btn = document.getElementById('btn-pay');
+    btn.disabled = true;
+    btn.textContent = 'กำลังบันทึก...';
+
+    const reference = document.getElementById('reference')?.value || '';
+
+    fetch(`/pos/payment/${orderId}/process/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({
+            payment_method: selectedMethod,
+            received: received,
+            reference: reference,
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            const change = parseFloat(data.change);
+            document.getElementById('success-change').textContent =
+                change > 0 ? `เงินทอน ฿${change.toLocaleString()}` : '';
+            document.getElementById('success-order').textContent =
+                `Order #${data.order_number}`;
+            document.getElementById('success-overlay').classList.add('show');
+        } else {
+            alert(data.error || 'เกิดข้อผิดพลาด');
+            btn.disabled = false;
+            btn.textContent = 'ชำระเงิน ✅';
+        }
+    });
+}
+</script>
+{% endblock %}
