@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc --track-changes=all Jaan_ClaudeCode_Prompts.docx -o output.md)",
+      "Bash(python scripts/office/unpack.py Jaan_ClaudeCode_Prompts.docx unpacked/)",
+      "Bash(python -c ':*)",
+      "Bash(django-admin startproject:*)",
+      "Bash(python manage.py startapp accounts)",
+      "Bash(python manage.py startapp restaurant)",
+      "Bash(python manage.py startapp pos)",
+      "Bash(python manage.py startapp hotel_integration)",
+      "Bash(python manage.py startapp events)",
+      "Bash(pip install:*)",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py makemigrations)",
+      "Bash(python manage.py migrate)",
+      "Bash(timeout 5 python manage.py runserver 0.0.0.0:8000)"
+    ]
+  }
+}
