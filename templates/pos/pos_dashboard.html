@@ -25,7 +25,7 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">POS Dashboard</h1>
+                <h1 class="text-2xl font-bold text-gray-900">หน้าหลัก POS</h1>
                 <p class="text-gray-400 text-sm mt-0.5">{{ today|date:"d/m/Y" }} — สารข้าว Restaurant</p>
             </div>
             <div class="flex gap-2">
@@ -33,7 +33,7 @@
                     เปิด POS
                 </a>
                 <a href="{% url 'pos:kitchen_display' %}" class="px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50 transition">
-                    Kitchen
+                    จอครัว
                 </a>
             </div>
         </div>
@@ -47,7 +47,7 @@
                 <div class="flex items-center gap-3 mt-2 text-xs opacity-60">
                     <span>{{ today_count }} ออเดอร์</span>
                     <span>{{ today_covers }} คน</span>
-                    <span>Avg ฿{{ avg_check|floatformat:0 }}/คน</span>
+                    <span>เฉลี่ย ฿{{ avg_check|floatformat:0 }}/คน</span>
                 </div>
                 {% if daily_target %}
                 <div class="mt-3">
@@ -81,12 +81,12 @@
             <div class="card kpi">
                 <div class="kpi-label text-gray-500">โต๊ะ</div>
                 <div class="kpi-value text-gray-800">{{ occupied }}/{{ total_tables }}</div>
-                <div class="kpi-label text-gray-400">occupied</div>
+                <div class="kpi-label text-gray-400">มีลูกค้า</div>
             </div>
 
             <!-- FC Target -->
             <div class="card kpi">
-                <div class="kpi-label text-gray-500">FC% เป้า</div>
+                <div class="kpi-label text-gray-500">ต้นทุนอาหาร %</div>
                 <div class="kpi-value {% if kpi %}text-gray-800{% else %}text-gray-300{% endif %}">
                     {% if kpi %}{{ kpi.food_cost_target_pct }}%{% else %}-{% endif %}
                 </div>
@@ -98,7 +98,7 @@
         <div class="grid grid-cols-3 gap-4 mb-4">
             <!-- USP Card -->
             <div class="card-accent">
-                <div class="text-xs opacity-70 mb-2">USP — จุดขายร้าน</div>
+                <div class="text-xs opacity-70 mb-2">จุดขายร้าน</div>
                 <div class="font-bold text-lg leading-tight">อาหารใต้แท้ ตรัง</div>
                 <div class="text-sm opacity-80 mt-1">วัตถุดิบท้องถิ่น สด ทุกวัน</div>
                 <div class="mt-3 space-y-1 text-xs opacity-70">
@@ -141,7 +141,7 @@
             <!-- Top Sellers -->
             <div class="card">
                 <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-gray-800">Top Sellers เดือนนี้</h3>
+                    <h3 class="font-bold text-gray-800">ขายดีเดือนนี้</h3>
                     <span class="text-xs text-gray-400">{{ month_count }} ออเดอร์</span>
                 </div>
                 {% if top_sellers %}
@@ -169,7 +169,7 @@
             <!-- Customer Segments (STP) -->
             <div class="card">
                 <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-gray-800">ลูกค้า (STP Analysis)</h3>
+                    <h3 class="font-bold text-gray-800">วิเคราะห์ลูกค้า</h3>
                     <span class="text-xs text-gray-400">เดือนนี้</span>
                 </div>
 
@@ -199,7 +199,7 @@
 
                 <!-- STP Insight -->
                 <div class="mt-4 pt-3 border-t border-cream-100">
-                    <div class="text-xs font-semibold text-gray-500 mb-1">Targeting Insight</div>
+                    <div class="text-xs font-semibold text-gray-500 mb-1">ข้อมูลเชิงลึก</div>
                     <p class="text-xs text-gray-400">
                         {% if segment_list.0.key == 'couple' %}
                         คู่รักเป็นกลุ่มหลัก — เน้นเมนู share set, เมนู photo-worthy, โปรโมชั่นคู่

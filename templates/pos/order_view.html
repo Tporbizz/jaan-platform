@@ -90,7 +90,7 @@
                 {% if mi.name_en %}<div class="text-xs text-gray-400">{{ mi.name_en }}</div>{% endif %}
                 <div class="flex items-center justify-between mt-1">
                     <span class="text-base font-bold text-jaan-600">฿{{ mi.selling_price|floatformat:0 }}</span>
-                    {% if mi.prep_station == 'bar' %}<span class="text-[10px] font-bold text-purple-500">BAR</span>{% endif %}
+                    {% if mi.prep_station == 'bar' %}<span class="text-[10px] font-bold text-purple-500">บาร์</span>{% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -116,9 +116,9 @@
                     <div class="text-sm font-medium text-gray-800">
                         {{ oi.menu_item.name }}
                         {% if oi.menu_item.prep_station == 'bar' %}
-                        <span class="status-badge bg-purple-100 text-purple-700 ml-1">BAR</span>
+                        <span class="status-badge bg-purple-100 text-purple-700 ml-1">บาร์</span>
                         {% else %}
-                        <span class="status-badge bg-orange-100 text-orange-700 ml-1">KIT</span>
+                        <span class="status-badge bg-orange-100 text-orange-700 ml-1">ครัว</span>
                         {% endif %}
                     </div>
                     {% if oi.special_request %}
@@ -157,7 +157,7 @@
                 <span class="font-bold text-lg" id="subtotal">฿{{ order.subtotal|floatformat:0 }}</span>
             </div>
             <div class="flex justify-between text-xs text-gray-400 mb-3">
-                <span>Avg/คน</span>
+                <span>เฉลี่ย/คน</span>
                 <span>฿{{ order.avg_check|floatformat:0 }}</span>
             </div>
 

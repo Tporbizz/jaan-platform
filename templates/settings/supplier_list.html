@@ -25,13 +25,13 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <div class="flex items-center gap-2 mb-1">
-                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">Settings</a>
+                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">ตั้งค่า</a>
                     <span class="text-gray-300">/</span>
-                    <span class="text-gray-800 font-semibold text-sm">Supplier</span>
+                    <span class="text-gray-800 font-semibold text-sm">ผู้จัดส่ง</span>
                 </div>
-                <h1 class="text-2xl font-bold text-gray-900">Supplier ({{ suppliers|length }})</h1>
+                <h1 class="text-2xl font-bold text-gray-900">ผู้จัดส่ง ({{ suppliers|length }})</h1>
             </div>
-            <button onclick="openModal()" class="btn btn-primary">+ เพิ่ม Supplier</button>
+            <button onclick="openModal()" class="btn btn-primary">+ เพิ่มผู้จัดส่ง</button>
         </div>
 
         <div class="space-y-3">
@@ -51,7 +51,7 @@
                     class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-3 py-1">แก้ไข</button>
             </div>
             {% empty %}
-            <div class="card text-center py-12 text-gray-400">ยังไม่มี Supplier</div>
+            <div class="card text-center py-12 text-gray-400">ยังไม่มีผู้จัดส่ง</div>
             {% endfor %}
         </div>
     </main>
@@ -60,7 +60,7 @@
 <!-- Modal -->
 <div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
     <div class="modal">
-        <h2 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">เพิ่ม Supplier</h2>
+        <h2 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">เพิ่มผู้จัดส่ง</h2>
         <form method="post" action="{% url 'settings:supplier_save' %}">
             {% csrf_token %}
             <input type="hidden" name="supplier_id" id="f-id" value="">
@@ -98,7 +98,7 @@
 
 <script>
 function openModal() {
-    document.getElementById('modal-title').textContent = 'เพิ่ม Supplier';
+    document.getElementById('modal-title').textContent = 'เพิ่มผู้จัดส่ง';
     document.getElementById('f-id').value = '';
     document.getElementById('f-name').value = '';
     document.getElementById('f-contact').value = '';

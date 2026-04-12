@@ -25,7 +25,7 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Stock Dashboard</h1>
+                <h1 class="text-3xl font-bold text-gray-900">คลังสินค้า</h1>
                 <p class="text-gray-400 mt-1">คลังวัตถุดิบ — สารข้าว Restaurant</p>
             </div>
             <div class="flex items-center gap-3">
@@ -53,7 +53,7 @@
                 <div class="text-xs text-gray-400 mt-1">ต่ำกว่า min stock</div>
             </div>
             <div class="card">
-                <div class="text-xs text-gray-400 mb-1">Waste เดือนนี้</div>
+                <div class="text-xs text-gray-400 mb-1">ของเสียเดือนนี้</div>
                 <div class="text-3xl font-extrabold text-red-500">฿{{ waste_cost|floatformat:0 }}</div>
                 <div class="text-xs text-gray-400 mt-1">{{ waste_count }} รายการ</div>
             </div>
@@ -64,7 +64,7 @@
             <!-- Expiry Alerts (3 cols) -->
             <div class="col-span-3 card-dark">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold">Expiry Alerts</h3>
+                    <h3 class="font-bold">ใกล้หมดอายุ</h3>
                     <div class="flex gap-3 text-xs">
                         <span class="text-red-400">หมดแล้ว: {{ expired_count }}</span>
                         <span class="text-orange-400">3 วัน: {{ expiring_3d_count }}</span>

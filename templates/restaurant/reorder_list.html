@@ -23,7 +23,7 @@
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Smart Reorder</h1>
+                <h1 class="text-3xl font-bold text-gray-900">สั่งซื้ออัจฉริยะ</h1>
                 <p class="text-gray-400 mt-1">วัตถุดิบที่ต้องสั่งซื้อ — {{ total_items }} รายการ</p>
             </div>
             <div class="flex items-center gap-3">
@@ -84,7 +84,7 @@
                             <th class="pb-3 font-medium text-right">คงเหลือ</th>
                             <th class="pb-3 font-medium text-right">Min</th>
                             <th class="pb-3 font-medium text-right">สั่ง</th>
-                            <th class="pb-3 font-medium">Supplier</th>
+                            <th class="pb-3 font-medium">ผู้จัดส่ง</th>
                             <th class="pb-3 font-medium text-right">ราคา/หน่วย</th>
                             <th class="pb-3 font-medium text-right">รวม</th>
                         </tr>
@@ -131,7 +131,7 @@
         {% else %}
         <div class="card text-center py-12">
             <span class="text-4xl mb-3 block">✅</span>
-            <p class="text-gray-500 text-lg">Stock เพียงพอทุกรายการ — ไม่ต้องสั่งซื้อ</p>
+            <p class="text-gray-500 text-lg">สต็อกเพียงพอทุกรายการ — ไม่ต้องสั่งซื้อ</p>
         </div>
         {% endif %}
     </main>

@@ -18,10 +18,10 @@
     <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Food Cost & Pricing</h1>
-                <p class="text-gray-400 mt-1">ABC Menu Analysis — {{ total_items }} เมนู · {{ high_fc_count }} เมนู FC > 35%</p>
+                <h1 class="text-3xl font-bold text-gray-900">ต้นทุนอาหาร & ราคาขาย</h1>
+                <p class="text-gray-400 mt-1">วิเคราะห์เมนู ABC — {{ total_items }} เมนู · {{ high_fc_count }} เมนู FC > 35%</p>
             </div>
-            <a href="/reports/variance/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50">Variance Report →</a>
+            <a href="/reports/variance/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50">ความคลาดเคลื่อน →</a>
         </div>
         <div class="card">
             <div class="overflow-x-auto">
@@ -52,12 +52,12 @@
             </div>
         </div>
         <div class="card mt-6">
-            <h3 class="font-bold text-gray-800 mb-3">ABC Legend</h3>
+            <h3 class="font-bold text-gray-800 mb-3">คำอธิบาย ABC</h3>
             <div class="grid grid-cols-4 gap-3 text-sm">
-                <div class="abc-star rounded-xl p-3"><b>STAR</b> — FC ≤33%, high margin + high sales</div>
-                <div class="abc-plow rounded-xl p-3"><b>PLOW</b> — FC 33-38%, good but could improve</div>
-                <div class="abc-puzzle rounded-xl p-3"><b>PUZZLE</b> — FC 38-45%, review recipe/pricing</div>
-                <div class="abc-dog rounded-xl p-3"><b>DOG</b> — FC >45%, remove or reprice</div>
+                <div class="abc-star rounded-xl p-3"><b>STAR</b> — FC ≤33%, กำไรสูง + ขายดี</div>
+                <div class="abc-plow rounded-xl p-3"><b>PLOW</b> — FC 33-38%, ดี แต่ปรับปรุงได้</div>
+                <div class="abc-puzzle rounded-xl p-3"><b>PUZZLE</b> — FC 38-45%, ทบทวนสูตร/ราคา</div>
+                <div class="abc-dog rounded-xl p-3"><b>DOG</b> — FC >45%, ควรตัดหรือปรับราคา</div>
             </div>
         </div>
     </main>

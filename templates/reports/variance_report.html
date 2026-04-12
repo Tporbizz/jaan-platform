@@ -5,29 +5,29 @@
 <div class="max-w-5xl mx-auto p-8">
     <div class="flex items-center justify-between mb-8">
         <div>
-            <h1 class="text-3xl font-bold">Actual vs Theoretical</h1>
-            <p class="text-gray-400 mt-1">Food Cost Variance — {{ month }}/{{ year }}</p>
+            <h1 class="text-3xl font-bold">จริง vs ทฤษฎี</h1>
+            <p class="text-gray-400 mt-1">ความคลาดเคลื่อนต้นทุนอาหาร — {{ month }}/{{ year }}</p>
         </div>
-        <a href="/reports/pricing/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← Pricing</a>
+        <a href="/reports/pricing/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← ต้นทุนเมนู</a>
     </div>
 
     <div class="grid grid-cols-4 gap-4 mb-6">
         <div class="card-dark">
-            <div class="text-xs opacity-60">Revenue</div>
+            <div class="text-xs opacity-60">รายได้</div>
             <div class="text-2xl font-extrabold mt-1">฿{{ revenue|floatformat:0 }}</div>
         </div>
         <div class="card">
-            <div class="text-xs text-gray-400">Theoretical Cost</div>
+            <div class="text-xs text-gray-400">ต้นทุนตามทฤษฎี</div>
             <div class="text-2xl font-extrabold mt-1">฿{{ theoretical_cost|floatformat:0 }}</div>
             <div class="text-xs text-gray-400 mt-1">{{ fc_theo_pct|floatformat:1 }}%</div>
         </div>
         <div class="card">
-            <div class="text-xs text-gray-400">Actual Cost</div>
+            <div class="text-xs text-gray-400">ต้นทุนจริง</div>
             <div class="text-2xl font-extrabold mt-1">฿{{ actual_cost|floatformat:0 }}</div>
             <div class="text-xs {% if fc_actual_pct > 35 %}text-red-500{% else %}text-gray-400{% endif %} mt-1">{{ fc_actual_pct|floatformat:1 }}%</div>
         </div>
         <div class="card {% if variance_pct > 3 %}bg-red-50 border-2 border-red-200{% endif %}">
-            <div class="text-xs text-gray-400">Variance</div>
+            <div class="text-xs text-gray-400">ความคลาดเคลื่อน</div>
             <div class="text-2xl font-extrabold mt-1 {% if variance > 0 %}text-red-600{% else %}text-green-600{% endif %}">
                 ฿{{ variance|floatformat:0 }}
             </div>
@@ -36,10 +36,10 @@
     </div>
 
     <div class="card">
-        <h3 class="font-bold text-gray-800 mb-3">Waste Cost เดือนนี้</h3>
+        <h3 class="font-bold text-gray-800 mb-3">ต้นทุนของเสียเดือนนี้</h3>
         <div class="text-2xl font-bold {% if waste_cost > 5000 %}text-red-600{% else %}text-gray-800{% endif %}">฿{{ waste_cost|floatformat:0 }}</div>
         {% if kpi %}
-        <div class="text-sm text-gray-400 mt-1">Budget: ฿{{ kpi.waste_budget|floatformat:0 }} · Target FC: {{ kpi.food_cost_target_pct }}%</div>
+        <div class="text-sm text-gray-400 mt-1">งบประมาณ: ฿{{ kpi.waste_budget|floatformat:0 }} · เป้า FC: {{ kpi.food_cost_target_pct }}%</div>
         {% endif %}
     </div>
 </div>

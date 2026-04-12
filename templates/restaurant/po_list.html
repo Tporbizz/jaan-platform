@@ -19,13 +19,13 @@
     <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Purchase Orders</h1>
+                <h1 class="text-3xl font-bold text-gray-900">ใบสั่งซื้อ</h1>
                 <p class="text-gray-400 mt-1">ใบสั่งซื้อทั้งหมด</p>
             </div>
             <div class="flex items-center gap-3">
                 <a href="/procurement/reorder/"
                     class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
-                    Smart Reorder
+                    สั่งซื้ออัจฉริยะ
                 </a>
             </div>
         </div>
@@ -53,12 +53,12 @@
                     <thead>
                         <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
                             <th class="pb-3 font-medium">PO #</th>
-                            <th class="pb-3 font-medium">Supplier</th>
+                            <th class="pb-3 font-medium">ผู้จัดส่ง</th>
                             <th class="pb-3 font-medium">วันสั่ง</th>
                             <th class="pb-3 font-medium">วันรับ (คาด)</th>
                             <th class="pb-3 font-medium text-right">ยอดรวม</th>
                             <th class="pb-3 font-medium text-center">สถานะ</th>
-                            <th class="pb-3 font-medium text-center">Action</th>
+                            <th class="pb-3 font-medium text-center">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-cream-100">
@@ -95,7 +95,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-gray-400">ยังไม่มี PO — ใช้ Smart Reorder เพื่อสร้าง</td>
+                            <td colspan="7" class="py-8 text-center text-gray-400">ยังไม่มีใบสั่งซื้อ — ใช้สั่งซื้ออัจฉริยะเพื่อสร้าง</td>
                         </tr>
                         {% endfor %}
                     </tbody>

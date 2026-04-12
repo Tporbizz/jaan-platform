@@ -15,11 +15,11 @@
     <main class="flex-1 ml-[72px] p-8 max-w-[1200px]">
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Hotel Integration</h1>
-                <p class="text-gray-400 mt-1">Parima Hotel — Guest & Room Charge</p>
+                <h1 class="text-3xl font-bold text-gray-900">เชื่อมโยงโรงแรม</h1>
+                <p class="text-gray-400 mt-1">Parima Hotel — แขกและค่าใช้จ่ายห้องพัก</p>
             </div>
             <div class="flex gap-2">
-                <a href="/hotel/bf-settlement/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">BF Settlement</a>
+                <a href="/hotel/bf-settlement/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">ชำระค่าอาหารเช้า</a>
             </div>
         </div>
 
@@ -30,29 +30,29 @@
                 <div class="text-3xl font-extrabold mt-1">{{ guest_count }}</div>
             </div>
             <div class="card">
-                <div class="text-xs text-gray-400">Pending Charges</div>
+                <div class="text-xs text-gray-400">รอเก็บเงิน</div>
                 <div class="text-3xl font-extrabold mt-1">{{ pending_count }}</div>
             </div>
             <div class="card">
-                <div class="text-xs text-gray-400">PMS</div>
+                <div class="text-xs text-gray-400">ระบบจัดการโรงแรม</div>
                 <div class="text-xl font-bold mt-1">{% if config %}{{ config.pms_type }} · {{ config.sync_method }}{% else %}ยังไม่ตั้งค่า{% endif %}</div>
             </div>
         </div>
 
         <!-- Import CSV -->
         <div class="card mb-6">
-            <h3 class="font-bold text-gray-800 mb-3">Import Guest List (CSV)</h3>
+            <h3 class="font-bold text-gray-800 mb-3">นำเข้ารายชื่อแขก (CSV)</h3>
             <form method="post" action="/hotel/import-csv/" enctype="multipart/form-data" class="flex items-center gap-4">
                 {% csrf_token %}
                 <input type="file" name="csv_file" accept=".csv" class="text-sm">
-                <button type="submit" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl">Upload</button>
+                <button type="submit" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl">อัปโหลด</button>
             </form>
             <p class="text-xs text-gray-400 mt-2">คอลัมน์: room, guest_name, checkout, package (BB/HB/FB/RO)</p>
         </div>
 
         <!-- Room Lookup -->
         <div class="card mb-6">
-            <h3 class="font-bold text-gray-800 mb-3">Room Lookup</h3>
+            <h3 class="font-bold text-gray-800 mb-3">ค้นหาห้องพัก</h3>
             <div class="flex gap-3">
                 <input type="text" id="room-input" placeholder="เลขห้อง..." class="border border-cream-200 rounded-xl px-4 py-2 text-sm w-32">
                 <button onclick="lookupRoom()" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl">ค้นหา</button>
@@ -60,8 +60,8 @@
             <div id="room-result" class="mt-3 hidden">
                 <div class="bg-cream-50 rounded-xl p-4 text-sm">
                     <div class="font-bold text-lg" id="r-name"></div>
-                    <div class="text-gray-500 mt-1">ห้อง <span id="r-room"></span> · Checkout <span id="r-checkout"></span></div>
-                    <div class="text-gray-500">Package: <span id="r-package"></span> · BF: <span id="r-bf"></span></div>
+                    <div class="text-gray-500 mt-1">ห้อง <span id="r-room"></span> · เช็คเอาต์ <span id="r-checkout"></span></div>
+                    <div class="text-gray-500">แพ็กเกจ: <span id="r-package"></span> · อาหารเช้า: <span id="r-bf"></span></div>
                 </div>
             </div>
             <div id="room-notfound" class="mt-3 hidden text-sm text-red-500 font-semibold">ไม่พบข้อมูลห้องนี้</div>
@@ -75,7 +75,7 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
-                            <th class="pb-3">ห้อง</th><th class="pb-3">ชื่อ</th><th class="pb-3">Checkout</th><th class="pb-3">Package</th><th class="pb-3">BF</th>
+                            <th class="pb-3">ห้อง</th><th class="pb-3">ชื่อ</th><th class="pb-3">เช็คเอาต์</th><th class="pb-3">แพ็กเกจ</th><th class="pb-3">อาหารเช้า</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-cream-100">
@@ -85,7 +85,7 @@
                             <td class="py-2">{{ g.guest_name }}</td>
                             <td class="py-2">{{ g.checkout_date|date:"d/m" }}</td>
                             <td class="py-2">{{ g.package_type }}</td>
-                            <td class="py-2">{% if g.bf_included %}<span class="text-green-600 font-semibold">Yes</span>{% else %}<span class="text-gray-400">No</span>{% endif %}</td>
+                            <td class="py-2">{% if g.bf_included %}<span class="text-green-600 font-semibold">รวม</span>{% else %}<span class="text-gray-400">ไม่รวม</span>{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -97,7 +97,7 @@
         <!-- Pending Room Charges -->
         {% if pending_charges %}
         <div class="card mb-6">
-            <h3 class="font-bold text-gray-800 mb-3">Pending Room Charges</h3>
+            <h3 class="font-bold text-gray-800 mb-3">ค่าใช้จ่ายรอเก็บเงิน</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
@@ -123,12 +123,12 @@
         <!-- Recent BF Settlements -->
         {% if recent_settlements %}
         <div class="card">
-            <h3 class="font-bold text-gray-800 mb-3">BF Settlement ล่าสุด</h3>
+            <h3 class="font-bold text-gray-800 mb-3">ชำระค่าอาหารเช้าล่าสุด</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
-                            <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">Walk-in</th><th class="pb-3 text-right">ยอด</th>
+                            <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">ลูกค้าทั่วไป</th><th class="pb-3 text-right">ยอด</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-cream-100">
@@ -165,7 +165,7 @@ function lookupRoom() {
             document.getElementById('r-room').textContent = data.room_number;
             document.getElementById('r-checkout').textContent = data.checkout_date;
             document.getElementById('r-package').textContent = data.package_type || '-';
-            document.getElementById('r-bf').textContent = data.bf_included ? 'Yes' : 'No';
+            document.getElementById('r-bf').textContent = data.bf_included ? 'รวม' : 'ไม่รวม';
             document.getElementById('room-result').classList.remove('hidden');
         } else {
             document.getElementById('room-notfound').classList.remove('hidden');

@@ -53,7 +53,7 @@
         <!-- แยกตาม zone -->
         <div class="grid grid-cols-2 gap-6">
             <div class="card-dark">
-                <h3 class="text-sm opacity-60 mb-3">ครัว (Kitchen)</h3>
+                <h3 class="text-sm opacity-60 mb-3">ครัว</h3>
                 {% for shift in today_shifts %}
                     {% if shift.employee.position == 'chef' or shift.employee.position == 'sous_chef' or shift.employee.position == 'cook' %}
                     <div class="flex justify-between items-center py-1.5">
@@ -64,7 +64,7 @@
                 {% endfor %}
             </div>
             <div class="card">
-                <h3 class="text-sm text-gray-400 mb-3">หน้าร้าน (Front)</h3>
+                <h3 class="text-sm text-gray-400 mb-3">หน้าร้าน</h3>
                 {% for shift in today_shifts %}
                     {% if shift.employee.position == 'server' or shift.employee.position == 'cashier' or shift.employee.position == 'manager' %}
                     <div class="flex justify-between items-center py-1.5">

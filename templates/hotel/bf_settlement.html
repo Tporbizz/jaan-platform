@@ -5,10 +5,10 @@
 <div class="max-w-4xl mx-auto p-8">
     <div class="flex items-center justify-between mb-8">
         <div>
-            <h1 class="text-3xl font-bold">BF Settlement</h1>
-            <p class="text-gray-400 mt-1">Breakfast Cover Tracking — Hotel</p>
+            <h1 class="text-3xl font-bold">ชำระค่าอาหารเช้า</h1>
+            <p class="text-gray-400 mt-1">ติดตามยอดอาหารเช้า — โรงแรม</p>
         </div>
-        <a href="/hotel/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← Hotel</a>
+        <a href="/hotel/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← โรงแรม</a>
     </div>
 
     <!-- Input Form -->
@@ -19,29 +19,29 @@
             <input type="hidden" name="date" value="{{ today|date:'Y-m-d' }}">
             <div class="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">BB Covers</label>
+                    <label class="text-xs text-gray-400 block mb-1">BB (จำนวน)</label>
                     <input type="number" name="bb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">HB Covers</label>
+                    <label class="text-xs text-gray-400 block mb-1">HB (จำนวน)</label>
                     <input type="number" name="hb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">FB Covers</label>
+                    <label class="text-xs text-gray-400 block mb-1">FB (จำนวน)</label>
                     <input type="number" name="fb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
             </div>
             <div class="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">Walk-in Covers</label>
+                    <label class="text-xs text-gray-400 block mb-1">ลูกค้าทั่วไป</label>
                     <input type="number" name="walkin_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">Total Covers</label>
+                    <label class="text-xs text-gray-400 block mb-1">รวมทั้งหมด</label>
                     <input type="number" name="total_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 block mb-1">Total Amount (฿)</label>
+                    <label class="text-xs text-gray-400 block mb-1">ยอดรวม (฿)</label>
                     <input type="number" name="total_amount" value="0" step="0.01" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
                 </div>
             </div>
@@ -52,12 +52,12 @@
     <!-- History -->
     {% if settlements %}
     <div class="card">
-        <h3 class="font-bold text-gray-800 mb-3">ประวัติ BF Settlement</h3>
+        <h3 class="font-bold text-gray-800 mb-3">ประวัติการชำระค่าอาหารเช้า</h3>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
-                        <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">Walk-in</th><th class="pb-3 text-right">ยอด (฿)</th>
+                        <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">ลูกค้าทั่วไป</th><th class="pb-3 text-right">ยอด (฿)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-cream-100">

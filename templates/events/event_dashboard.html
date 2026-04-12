@@ -10,7 +10,7 @@
 <div class="max-w-5xl mx-auto p-8">
     <div class="flex items-center justify-between mb-6">
         <div>
-            <a href="/events/" class="text-sm text-gray-400 hover:text-gray-600">← Events</a>
+            <a href="/events/" class="text-sm text-gray-400 hover:text-gray-600">← อีเวนต์</a>
             <h1 class="text-3xl font-bold mt-1">{{ session.name }}</h1>
             <p class="text-gray-400">{{ session.date|date:"d/m/Y" }} · {{ session.location|default:"—" }}</p>
         </div>
@@ -29,15 +29,15 @@
     <!-- KPIs -->
     <div class="grid grid-cols-3 gap-4 mb-6">
         <div class="card-dark">
-            <div class="text-xs opacity-60">Revenue</div>
+            <div class="text-xs opacity-60">รายได้</div>
             <div class="text-3xl font-extrabold mt-1">฿{{ total_revenue|floatformat:0 }}</div>
         </div>
         <div class="card">
-            <div class="text-xs text-gray-400">Orders</div>
+            <div class="text-xs text-gray-400">ออเดอร์</div>
             <div class="text-3xl font-extrabold mt-1">{{ total_orders }}</div>
         </div>
         <div class="card">
-            <div class="text-xs text-gray-400">Avg Order</div>
+            <div class="text-xs text-gray-400">เฉลี่ยต่อออเดอร์</div>
             <div class="text-3xl font-extrabold mt-1">฿{{ avg_order|floatformat:0 }}</div>
         </div>
     </div>
@@ -45,7 +45,7 @@
     <div class="grid grid-cols-5 gap-5">
         <!-- Top Items -->
         <div class="col-span-2 card">
-            <h3 class="font-bold text-gray-800 mb-3">Top Selling</h3>
+            <h3 class="font-bold text-gray-800 mb-3">ขายดีสุด</h3>
             {% for item in top_items %}
             <div class="flex justify-between py-2 border-b border-cream-100 text-sm">
                 <span>{{ item.menu_item_name }}</span>
@@ -58,13 +58,13 @@
 
         <!-- Recent Orders -->
         <div class="col-span-3 card">
-            <h3 class="font-bold text-gray-800 mb-3">Orders ล่าสุด</h3>
+            <h3 class="font-bold text-gray-800 mb-3">ออเดอร์ล่าสุด</h3>
             <div class="space-y-2 max-h-[400px] overflow-y-auto">
                 {% for o in orders %}
                 <div class="flex items-center justify-between py-2 border-b border-cream-100 text-sm">
                     <div>
                         <span class="font-medium">{{ o.order_number }}</span>
-                        <span class="text-xs text-gray-400 ml-2">{{ o.created_at|timesince }} ago</span>
+                        <span class="text-xs text-gray-400 ml-2">{{ o.created_at|timesince }}ที่แล้ว</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="font-bold">฿{{ o.total|floatformat:0 }}</span>

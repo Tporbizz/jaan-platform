@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}สร้าง Event — Jaan{% endblock %}
+{% block title %}สร้างอีเวนต์ — Jaan{% endblock %}
 {% block extra_head %}<style>.card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }</style>{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto p-8">
     <a href="/events/" class="text-sm text-gray-400 hover:text-gray-600">← กลับ</a>
-    <h1 class="text-3xl font-bold mt-2 mb-6">สร้าง Event ใหม่</h1>
+    <h1 class="text-3xl font-bold mt-2 mb-6">สร้างอีเวนต์ใหม่</h1>
     <form method="post" class="space-y-6">
         {% csrf_token %}
         <div class="card space-y-4">
             <div>
-                <label class="text-sm font-medium text-gray-600">ชื่อ Event</label>
+                <label class="text-sm font-medium text-gray-600">ชื่ออีเวนต์</label>
                 <input type="text" name="name" required class="w-full mt-1 px-4 py-3 border border-cream-200 rounded-xl">
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -32,14 +32,14 @@
                         <span class="font-medium text-gray-800">{{ mi.name }}</span>
                         <span class="text-xs text-gray-400 ml-2">ปกติ ฿{{ mi.selling_price|floatformat:0 }}</span>
                     </div>
-                    <input type="number" step="1" min="0" name="price_{{ mi.id }}" placeholder="ราคา event"
+                    <input type="number" step="1" min="0" name="price_{{ mi.id }}" placeholder="ราคาอีเวนต์"
                         value="{{ mi.selling_price|floatformat:0 }}"
                         class="w-28 text-right px-3 py-2 border border-cream-200 rounded-lg text-sm">
                 </div>
                 {% endfor %}
             </div>
         </div>
-        <button type="submit" class="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition text-lg">สร้าง Event</button>
+        <button type="submit" class="w-full py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition text-lg">สร้างอีเวนต์</button>
     </form>
 </div>
 {% endblock %}

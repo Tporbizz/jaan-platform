@@ -35,7 +35,7 @@
             </div>
             <div class="flex gap-2">
                 <a href="/pos/tables/" class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">เปิด POS</a>
-                <a href="/pos/kitchen/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">Kitchen</a>
+                <a href="/pos/kitchen/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">จอครัว</a>
             </div>
         </div>
 
@@ -53,14 +53,14 @@
                 <div class="text-xs text-gray-400 mt-1">Net: <span class="font-bold {% if pl.net_profit > 0 %}text-green-600{% else %}text-red-600{% endif %}">฿{{ pl.net_profit|floatformat:0 }}</span></div>
             </div>
             <div class="card">
-                <div class="text-xs text-gray-400">Food Cost %</div>
+                <div class="text-xs text-gray-400">ต้นทุนอาหาร %</div>
                 <div class="text-3xl font-extrabold mt-1 {% if pl.food_cost_pct <= 33 %}kpi-ok{% elif pl.food_cost_pct <= 37 %}kpi-warn{% else %}kpi-critical{% endif %}">
                     {{ pl.food_cost_pct|floatformat:1 }}%
                 </div>
                 <div class="text-xs text-gray-400 mt-1">เป้า ≤33%</div>
             </div>
             <div class="card">
-                <div class="text-xs text-gray-400">Prime Cost %</div>
+                <div class="text-xs text-gray-400">ต้นทุนหลัก %</div>
                 <div class="text-3xl font-extrabold mt-1 {% if pl.prime_cost_pct <= 63 %}kpi-ok{% elif pl.prime_cost_pct <= 68 %}kpi-warn{% else %}kpi-critical{% endif %}">
                     {{ pl.prime_cost_pct|floatformat:1 }}%
                 </div>
@@ -79,7 +79,7 @@
             <!-- Expiry Alerts -->
             <div class="card">
                 <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-gray-800">Expiry Alerts</h3>
+                    <h3 class="font-bold text-gray-800">ใกล้หมดอายุ</h3>
                     <a href="/stock/" class="text-xs text-blue-600 font-semibold">ดูทั้งหมด</a>
                 </div>
                 {% if expiring %}
@@ -102,7 +102,7 @@
             <!-- Low Stock -->
             <div class="card">
                 <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-bold text-gray-800">Low Stock</h3>
+                    <h3 class="font-bold text-gray-800">สต็อกต่ำ</h3>
                     <a href="/procurement/reorder/" class="text-xs text-blue-600 font-semibold">สั่งซื้อ</a>
                 </div>
                 {% if low_stock %}
@@ -112,7 +112,7 @@
                         <div class="text-sm font-semibold text-gray-800">{{ item.name }}</div>
                         <div class="text-right">
                             <div class="text-sm font-bold text-orange-600">{{ item.current_stock|floatformat:0 }}</div>
-                            <div class="text-xs text-gray-400">min {{ item.min_stock|floatformat:0 }}</div>
+                            <div class="text-xs text-gray-400">ขั้นต่ำ {{ item.min_stock|floatformat:0 }}</div>
                         </div>
                     </div>
                     {% endfor %}
@@ -160,7 +160,7 @@
             </a>
             <a href="/stock/" class="card text-center hover:shadow-md transition">
                 <div class="text-2xl mb-1">📦</div>
-                <div class="text-xs font-semibold text-gray-700">Stock</div>
+                <div class="text-xs font-semibold text-gray-700">คลังสินค้า</div>
             </a>
             <a href="/procurement/reorder/" class="card text-center hover:shadow-md transition">
                 <div class="text-2xl mb-1">🛒</div>
@@ -176,12 +176,12 @@
             </a>
             <a href="/events/" class="card text-center hover:shadow-md transition">
                 <div class="text-2xl mb-1">🎪</div>
-                <div class="text-xs font-semibold text-gray-700">Events</div>
-                {% if active_events %}<span class="text-xs text-orange-500 font-bold">{{ active_events.count }} active</span>{% endif %}
+                <div class="text-xs font-semibold text-gray-700">อีเวนต์</div>
+                {% if active_events %}<span class="text-xs text-orange-500 font-bold">{{ active_events.count }} งาน</span>{% endif %}
             </a>
             <a href="/hotel/" class="card text-center hover:shadow-md transition">
                 <div class="text-2xl mb-1">🏨</div>
-                <div class="text-xs font-semibold text-gray-700">Hotel</div>
+                <div class="text-xs font-semibold text-gray-700">โรงแรม</div>
             </a>
         </div>
 

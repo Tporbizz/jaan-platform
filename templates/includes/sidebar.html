@@ -5,35 +5,35 @@
         จาน
     </a>
 
-    <a href="/dashboard/" class="sidebar-item {% if active == 'dashboard' %}active{% endif %}" title="Dashboard">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Dash</span>
+    <a href="/dashboard/" class="sidebar-item {% if active == 'dashboard' %}active{% endif %}" title="หน้าหลัก">
+        <span class="sidebar-bar"></span><span class="sidebar-label">หน้าหลัก</span>
     </a>
-    <a href="/pos/" class="sidebar-item {% if active == 'pos' %}active{% endif %}" title="POS">
+    <a href="/pos/" class="sidebar-item {% if active == 'pos' %}active{% endif %}" title="ขายหน้าร้าน">
         <span class="sidebar-bar"></span><span class="sidebar-label">POS</span>
     </a>
-    <a href="/stock/" class="sidebar-item {% if active == 'stock' %}active{% endif %}" title="Stock">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Stock</span>
+    <a href="/stock/" class="sidebar-item {% if active == 'stock' %}active{% endif %}" title="คลังสินค้า">
+        <span class="sidebar-bar"></span><span class="sidebar-label">คลัง</span>
     </a>
-    <a href="/reports/pricing/" class="sidebar-item {% if active == 'reports' %}active{% endif %}" title="Reports">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Report</span>
+    <a href="/reports/pricing/" class="sidebar-item {% if active == 'reports' %}active{% endif %}" title="รายงาน">
+        <span class="sidebar-bar"></span><span class="sidebar-label">รายงาน</span>
     </a>
-    <a href="/events/" class="sidebar-item {% if active == 'events' %}active{% endif %}" title="Events">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Event</span>
+    <a href="/events/" class="sidebar-item {% if active == 'events' %}active{% endif %}" title="อีเวนต์">
+        <span class="sidebar-bar"></span><span class="sidebar-label">อีเวนต์</span>
     </a>
-    <a href="/hotel/" class="sidebar-item {% if active == 'hotel' %}active{% endif %}" title="Hotel">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Hotel</span>
+    <a href="/hotel/" class="sidebar-item {% if active == 'hotel' %}active{% endif %}" title="โรงแรม">
+        <span class="sidebar-bar"></span><span class="sidebar-label">โรงแรม</span>
     </a>
-    <a href="/hr/" class="sidebar-item {% if active == 'hr' %}active{% endif %}" title="HR / Shift">
-        <span class="sidebar-bar"></span><span class="sidebar-label">HR</span>
+    <a href="/hr/" class="sidebar-item {% if active == 'hr' %}active{% endif %}" title="พนักงาน">
+        <span class="sidebar-bar"></span><span class="sidebar-label">พนักงาน</span>
     </a>
-    <a href="/ai/" class="sidebar-item {% if active == 'ai' %}active{% endif %}" title="AI Studio">
+    <a href="/ai/" class="sidebar-item {% if active == 'ai' %}active{% endif %}" title="AI สร้างสรรค์">
         <span class="sidebar-bar"></span><span class="sidebar-label">AI</span>
     </a>
 
     <div class="flex-1"></div>
 
-    <a href="/settings/" class="sidebar-item {% if active == 'settings' %}active{% endif %}" title="Settings">
-        <span class="sidebar-bar"></span><span class="sidebar-label">Setup</span>
+    <a href="/settings/" class="sidebar-item {% if active == 'settings' %}active{% endif %}" title="ตั้งค่า">
+        <span class="sidebar-bar"></span><span class="sidebar-label">ตั้งค่า</span>
     </a>
     {% if user.is_authenticated %}
     <a href="/logout/" class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-xs font-bold" title="{{ user.first_name }}">

@@ -16,11 +16,11 @@
     <main class="flex-1 ml-[72px] p-8 max-w-[1000px]">
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+                <h1 class="text-3xl font-bold text-gray-900">ตั้งค่า</h1>
                 <p class="text-gray-400 mt-1">ตั้งค่าข้อมูลหลัก — วัตถุดิบ, เมนู, พนักงาน, Supplier</p>
             </div>
             <a href="/dashboard/" class="px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50 transition">
-                Dashboard
+                หน้าหลัก
             </a>
         </div>
 
@@ -49,7 +49,7 @@
             <a href="{% url 'settings:supplier_list' %}" class="setting-card">
                 <div class="icon-box bg-green-50 text-green-600">🏪</div>
                 <div class="flex-1">
-                    <div class="font-bold text-gray-800">Supplier</div>
+                    <div class="font-bold text-gray-800">ผู้จัดส่ง</div>
                     <div class="text-sm text-gray-400">ร้านค้า, เบอร์โทร, Line ID</div>
                 </div>
                 <div class="text-2xl font-extrabold text-gray-300">{{ suppliers_count }}</div>
@@ -104,7 +104,7 @@
             <a href="{% url 'settings:recipe_list' %}" class="setting-card">
                 <div class="icon-box bg-red-50 text-red-600">🧑‍🍳</div>
                 <div class="flex-1">
-                    <div class="font-bold text-gray-800">สูตรอาหาร (Recipe Builder)</div>
+                    <div class="font-bold text-gray-800">สูตรอาหาร</div>
                     <div class="text-sm text-gray-400">สร้าง/แก้สูตร, คำนวณต้นทุนอัตโนมัติ, ตั้งราคาขาย</div>
                 </div>
                 <div class="text-2xl font-extrabold text-gray-300">{{ recipe_count }}</div>
