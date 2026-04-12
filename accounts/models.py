@@ -5,13 +5,15 @@ from django.db import models
 class Tenant(models.Model):
     """ร้านอาหาร 1 ร้าน = 1 Tenant — ใช้แยกข้อมูลระหว่างร้าน"""
 
-    name = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=100, unique=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    name = models.CharField('ชื่อร้าน', max_length=200)
+    slug = models.SlugField('slug', max_length=100, unique=True)
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
 
     class Meta:
         db_table = 'accounts_tenant'
+        verbose_name = 'ร้าน'
+        verbose_name_plural = 'ร้าน'
 
     def __str__(self):
         return self.name
@@ -20,15 +22,16 @@ class Tenant(models.Model):
 class RestaurantBranch(models.Model):
     """สาขาของร้าน — 1 Tenant มีได้หลายสาขา"""
 
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='branches')
-    name = models.CharField(max_length=200)
-    address = models.TextField(blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    is_active = models.BooleanField(default=True)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='branches', verbose_name='ร้าน')
+    name = models.CharField('ชื่อสาขา', max_length=200)
+    address = models.TextField('ที่อยู่', blank=True)
+    phone = models.CharField('โทรศัพท์', max_length=20, blank=True)
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
 
     class Meta:
         db_table = 'accounts_branch'
-        verbose_name_plural = 'Restaurant branches'
+        verbose_name = 'สาขา'
+        verbose_name_plural = 'สาขา'
 
     def __str__(self):
         return f"{self.tenant.name} — {self.name}"
@@ -52,23 +55,27 @@ class User(AbstractUser):
     tenant = models.ForeignKey(
         Tenant, on_delete=models.CASCADE,
         related_name='users', null=True, blank=True,
+        verbose_name='ร้าน',
     )
     role = models.CharField(
-        max_length=20, choices=Role.choices, default=Role.STAFF,
+        'บทบาท', max_length=20, choices=Role.choices, default=Role.STAFF,
     )
     department = models.CharField(
-        max_length=10, choices=Department.choices, default=Department.FB,
+        'แผนก', max_length=10, choices=Department.choices, default=Department.FB,
         help_text='แผนกที่สังกัด — กำหนดหน้าที่เข้าถึงได้',
     )
     restaurant_branch = models.ForeignKey(
         RestaurantBranch, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='staff',
+        verbose_name='สาขา',
     )
-    phone = models.CharField(max_length=20, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', blank=True)
+    phone = models.CharField('โทรศัพท์', max_length=20, blank=True)
+    avatar = models.ImageField('รูปโปรไฟล์', upload_to='avatars/', blank=True)
 
     class Meta:
         db_table = 'accounts_user'
+        verbose_name = 'ผู้ใช้งาน'
+        verbose_name_plural = 'ผู้ใช้งาน'
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"

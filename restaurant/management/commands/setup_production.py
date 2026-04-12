@@ -58,4 +58,12 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f'Menu already imported: {MenuItem.objects.filter(tenant=tenant).count()} items')
 
+        # --- Seed Ingredients & Recipes ---
+        from restaurant.models import Item
+        if Item.objects.filter(tenant=tenant).count() == 0:
+            call_command('seed_ingredients')
+            self.stdout.write(self.style.SUCCESS('Seeded ingredients and recipes'))
+        else:
+            self.stdout.write(f'Ingredients already exist: {Item.objects.filter(tenant=tenant).count()} items')
+
         self.stdout.write(self.style.SUCCESS('Production setup complete!'))

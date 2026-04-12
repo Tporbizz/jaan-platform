@@ -14,19 +14,21 @@ class Table(models.Model):
         BILL_PENDING = 'bill_pending', 'รอเก็บเงิน'
         RESERVED = 'reserved', 'จอง'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='tables')
-    number = models.CharField(max_length=10)
-    name = models.CharField(max_length=50, blank=True, help_text='เช่น โต๊ะริมน้ำ, ห้อง VIP')
-    capacity = models.PositiveIntegerField(default=4)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.EMPTY)
-    zone = models.CharField(max_length=50, blank=True, help_text='โซน เช่น ในร้าน, ริมน้ำ, ชั้น 2')
-    grid_x = models.PositiveIntegerField(default=0, help_text='ตำแหน่งบน floor plan')
-    grid_y = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    sort_order = models.PositiveIntegerField(default=0)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='tables', verbose_name='ร้าน')
+    number = models.CharField('หมายเลขโต๊ะ', max_length=10)
+    name = models.CharField('ชื่อ', max_length=50, blank=True, help_text='เช่น โต๊ะริมน้ำ, ห้อง VIP')
+    capacity = models.PositiveIntegerField('ความจุ', default=4)
+    status = models.CharField('สถานะ', max_length=20, choices=Status.choices, default=Status.EMPTY)
+    zone = models.CharField('โซน', max_length=50, blank=True, help_text='โซน เช่น ในร้าน, ริมน้ำ, ชั้น 2')
+    grid_x = models.PositiveIntegerField('ตำแหน่ง X', default=0, help_text='ตำแหน่งบน floor plan')
+    grid_y = models.PositiveIntegerField('ตำแหน่ง Y', default=0)
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
+    sort_order = models.PositiveIntegerField('ลำดับ', default=0)
 
     class Meta:
         db_table = 'pos_table'
+        verbose_name = 'โต๊ะ'
+        verbose_name_plural = 'โต๊ะ'
         ordering = ['sort_order', 'number']
 
     def __str__(self):
@@ -46,31 +48,33 @@ class Order(models.Model):
         PAID = 'paid', 'ชำระแล้ว'
         CANCELLED = 'cancelled', 'ยกเลิก'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='orders')
-    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
-    order_number = models.CharField(max_length=20)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='orders', verbose_name='ร้าน')
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name='โต๊ะ')
+    order_number = models.CharField('เลขออเดอร์', max_length=20)
+    status = models.CharField('สถานะ', max_length=20, choices=Status.choices, default=Status.OPEN)
 
     # Guest info (สำหรับ upsell engine)
-    guest_count = models.PositiveIntegerField(default=1)
-    men_count = models.PositiveIntegerField(default=0)
-    women_count = models.PositiveIntegerField(default=0)
-    children_count = models.PositiveIntegerField(default=0)
-    senior_count = models.PositiveIntegerField(default=0)
+    guest_count = models.PositiveIntegerField('จำนวนลูกค้า', default=1)
+    men_count = models.PositiveIntegerField('ผู้ชาย', default=0)
+    women_count = models.PositiveIntegerField('ผู้หญิง', default=0)
+    children_count = models.PositiveIntegerField('เด็ก', default=0)
+    senior_count = models.PositiveIntegerField('ผู้สูงอายุ', default=0)
 
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    vat = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    subtotal = models.DecimalField('ยอดก่อนหัก', max_digits=10, decimal_places=2, default=0)
+    discount = models.DecimalField('ส่วนลด', max_digits=10, decimal_places=2, default=0)
+    service_charge = models.DecimalField('ค่าบริการ', max_digits=10, decimal_places=2, default=0)
+    vat = models.DecimalField('VAT', max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField('ยอดรวม', max_digits=10, decimal_places=2, default=0)
 
-    notes = models.TextField(blank=True)
-    opened_at = models.DateTimeField(auto_now_add=True)
-    closed_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orders_created')
+    notes = models.TextField('หมายเหตุ', blank=True)
+    opened_at = models.DateTimeField('เปิดเมื่อ', auto_now_add=True)
+    closed_at = models.DateTimeField('ปิดเมื่อ', null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orders_created', verbose_name='สร้างโดย')
 
     class Meta:
         db_table = 'pos_order'
+        verbose_name = 'ออเดอร์'
+        verbose_name_plural = 'ออเดอร์'
         ordering = ['-opened_at']
 
     def __str__(self):
@@ -103,19 +107,21 @@ class OrderItem(models.Model):
         SERVED = 'served', 'เสิร์ฟแล้ว'
         VOIDED = 'voided', 'ยกเลิก'
 
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    menu_item = models.ForeignKey('restaurant.MenuItem', on_delete=models.CASCADE, related_name='order_items')
-    quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    special_request = models.CharField(max_length=200, blank=True)
-    status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
-    is_voided = models.BooleanField(default=False)
-    void_reason = models.CharField(max_length=200, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    served_at = models.DateTimeField(null=True, blank=True)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name='ออเดอร์')
+    menu_item = models.ForeignKey('restaurant.MenuItem', on_delete=models.CASCADE, related_name='order_items', verbose_name='เมนู')
+    quantity = models.PositiveIntegerField('จำนวน', default=1)
+    unit_price = models.DecimalField('ราคาต่อหน่วย', max_digits=10, decimal_places=2)
+    special_request = models.CharField('คำขอพิเศษ', max_length=200, blank=True)
+    status = models.CharField('สถานะ', max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
+    is_voided = models.BooleanField('ยกเลิกแล้ว', default=False)
+    void_reason = models.CharField('เหตุผลยกเลิก', max_length=200, blank=True)
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
+    served_at = models.DateTimeField('เสิร์ฟเมื่อ', null=True, blank=True)
 
     class Meta:
         db_table = 'pos_orderitem'
+        verbose_name = 'รายการออเดอร์'
+        verbose_name_plural = 'รายการออเดอร์'
         ordering = ['created_at']
 
     def __str__(self):
@@ -138,21 +144,24 @@ class KitchenTicket(models.Model):
         IN_PROGRESS = 'in_progress', 'กำลังทำ'
         DONE = 'done', 'เสร็จ'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='kitchen_tickets')
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='kitchen_tickets')
-    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True)
-    ticket_number = models.CharField(max_length=20)
-    status = models.CharField(max_length=20, choices=TicketStatus.choices, default=TicketStatus.PENDING)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='kitchen_tickets', verbose_name='ร้าน')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='kitchen_tickets', verbose_name='ออเดอร์')
+    table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True, verbose_name='โต๊ะ')
+    ticket_number = models.CharField('เลข Ticket', max_length=20)
+    status = models.CharField('สถานะ', max_length=20, choices=TicketStatus.choices, default=TicketStatus.PENDING)
     prepared_by = models.ForeignKey(
         'hr.Employee', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='kitchen_tickets', help_text='เชฟ/คนครัวที่รับผิดชอบ',
+        related_name='kitchen_tickets', verbose_name='ผู้รับผิดชอบ',
+        help_text='เชฟ/คนครัวที่รับผิดชอบ',
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
+    completed_at = models.DateTimeField('เสร็จเมื่อ', null=True, blank=True)
+    notes = models.TextField('หมายเหตุ', blank=True)
 
     class Meta:
         db_table = 'pos_kitchenticket'
+        verbose_name = 'ใบสั่งครัว'
+        verbose_name_plural = 'ใบสั่งครัว'
         ordering = ['-created_at']
 
     def __str__(self):
@@ -160,14 +169,16 @@ class KitchenTicket(models.Model):
 
 
 class KitchenTicketItem(models.Model):
-    ticket = models.ForeignKey(KitchenTicket, on_delete=models.CASCADE, related_name='items')
-    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='ticket_items')
-    quantity = models.PositiveIntegerField(default=1)
-    special_request = models.CharField(max_length=200, blank=True)
-    is_done = models.BooleanField(default=False)
+    ticket = models.ForeignKey(KitchenTicket, on_delete=models.CASCADE, related_name='items', verbose_name='ใบสั่งครัว')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='ticket_items', verbose_name='รายการออเดอร์')
+    quantity = models.PositiveIntegerField('จำนวน', default=1)
+    special_request = models.CharField('คำขอพิเศษ', max_length=200, blank=True)
+    is_done = models.BooleanField('ทำเสร็จแล้ว', default=False)
 
     class Meta:
         db_table = 'pos_kitchenticketitem'
+        verbose_name = 'รายการใบสั่งครัว'
+        verbose_name_plural = 'รายการใบสั่งครัว'
 
     def __str__(self):
         return f"{self.order_item.menu_item.name} x{self.quantity}"
@@ -187,15 +198,17 @@ class MenuUpsellRule(models.Model):
         WOMEN_ONLY = 'women_only', 'ผู้หญิงล้วน'
         DEFAULT = 'default', 'ทั่วไป'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='upsell_rules')
-    profile_type = models.CharField(max_length=20, choices=ProfileType.choices)
-    menu_item = models.ForeignKey('restaurant.MenuItem', on_delete=models.CASCADE, related_name='upsell_rules')
-    reason = models.CharField(max_length=100, help_text='เหตุผลสั้นๆ เช่น "เมนูแนะนำสำหรับคู่"')
-    priority = models.PositiveIntegerField(default=0, help_text='ยิ่งสูง ยิ่งแสดงก่อน')
-    is_active = models.BooleanField(default=True)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='upsell_rules', verbose_name='ร้าน')
+    profile_type = models.CharField('ประเภทลูกค้า', max_length=20, choices=ProfileType.choices)
+    menu_item = models.ForeignKey('restaurant.MenuItem', on_delete=models.CASCADE, related_name='upsell_rules', verbose_name='เมนู')
+    reason = models.CharField('เหตุผล', max_length=100, help_text='เหตุผลสั้นๆ เช่น "เมนูแนะนำสำหรับคู่"')
+    priority = models.PositiveIntegerField('ลำดับความสำคัญ', default=0, help_text='ยิ่งสูง ยิ่งแสดงก่อน')
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
 
     class Meta:
         db_table = 'pos_menuupsellrule'
+        verbose_name = 'กฎ Upsell'
+        verbose_name_plural = 'กฎ Upsell'
         ordering = ['-priority']
 
     def __str__(self):
@@ -214,18 +227,20 @@ class Transaction(models.Model):
         ROOM_CHARGE = 'room_charge', 'เซ็นห้อง'
         TRANSFER = 'transfer', 'โอนเงิน'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='transactions')
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='transactions')
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    received = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    change = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    reference = models.CharField(max_length=100, blank=True, help_text='เลขห้อง, ref number')
-    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='transactions', verbose_name='ร้าน')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='transactions', verbose_name='ออเดอร์')
+    payment_method = models.CharField('วิธีชำระ', max_length=20, choices=PaymentMethod.choices)
+    amount = models.DecimalField('จำนวนเงิน', max_digits=10, decimal_places=2)
+    received = models.DecimalField('รับมา', max_digits=10, decimal_places=2, default=0)
+    change = models.DecimalField('ทอน', max_digits=10, decimal_places=2, default=0)
+    reference = models.CharField('อ้างอิง', max_length=100, blank=True, help_text='เลขห้อง, ref number')
+    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name='ดำเนินการโดย')
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
 
     class Meta:
         db_table = 'pos_transaction'
+        verbose_name = 'รายการชำระเงิน'
+        verbose_name_plural = 'รายการชำระเงิน'
         ordering = ['-created_at']
 
     def __str__(self):

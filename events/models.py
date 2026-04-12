@@ -11,21 +11,23 @@ class EventSession(models.Model):
         ACTIVE = 'active', 'กำลังขาย'
         CLOSED = 'closed', 'ปิดแล้ว'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='event_sessions')
-    name = models.CharField(max_length=200)
-    date = models.DateField(default=timezone.now)
-    location = models.CharField(max_length=200, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    session_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    menu_snapshot = models.JSONField(default=list)
-    total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    total_orders = models.PositiveIntegerField(default=0)
-    notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='event_sessions', verbose_name='ร้าน')
+    name = models.CharField('ชื่องาน', max_length=200)
+    date = models.DateField('วันที่', default=timezone.now)
+    location = models.CharField('สถานที่', max_length=200, blank=True)
+    status = models.CharField('สถานะ', max_length=20, choices=Status.choices, default=Status.DRAFT)
+    session_token = models.UUIDField('Token', default=uuid.uuid4, unique=True, editable=False)
+    menu_snapshot = models.JSONField('สแนปช็อตเมนู', default=list)
+    total_revenue = models.DecimalField('รายได้รวม', max_digits=12, decimal_places=2, default=0)
+    total_orders = models.PositiveIntegerField('จำนวนออเดอร์', default=0)
+    notes = models.TextField('หมายเหตุ', blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name='สร้างโดย')
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
 
     class Meta:
         db_table = 'events_eventsession'
+        verbose_name = 'งานอีเวนต์'
+        verbose_name_plural = 'งานอีเวนต์'
         ordering = ['-date']
 
     def __str__(self):
@@ -44,17 +46,19 @@ class EventOrder(models.Model):
         PAID = 'paid', 'ชำระแล้ว'
         CANCELLED = 'cancelled', 'ยกเลิก'
 
-    session = models.ForeignKey(EventSession, on_delete=models.CASCADE, related_name='orders')
-    order_number = models.CharField(max_length=20)
-    customer_name = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    payment_method = models.CharField(max_length=20, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    session = models.ForeignKey(EventSession, on_delete=models.CASCADE, related_name='orders', verbose_name='งานอีเวนต์')
+    order_number = models.CharField('เลขออเดอร์', max_length=20)
+    customer_name = models.CharField('ชื่อลูกค้า', max_length=100, blank=True)
+    status = models.CharField('สถานะ', max_length=20, choices=Status.choices, default=Status.PENDING)
+    subtotal = models.DecimalField('ยอดก่อนหัก', max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField('ยอดรวม', max_digits=10, decimal_places=2, default=0)
+    payment_method = models.CharField('วิธีชำระ', max_length=20, blank=True)
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
 
     class Meta:
         db_table = 'events_eventorder'
+        verbose_name = 'ออเดอร์อีเวนต์'
+        verbose_name_plural = 'ออเดอร์อีเวนต์'
         ordering = ['-created_at']
 
     def __str__(self):
@@ -67,14 +71,16 @@ class EventOrder(models.Model):
 
 
 class EventOrderItem(models.Model):
-    order = models.ForeignKey(EventOrder, on_delete=models.CASCADE, related_name='items')
-    menu_item_name = models.CharField(max_length=200)
-    menu_item_id = models.IntegerField(null=True, blank=True)
-    quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    order = models.ForeignKey(EventOrder, on_delete=models.CASCADE, related_name='items', verbose_name='ออเดอร์')
+    menu_item_name = models.CharField('ชื่อเมนู', max_length=200)
+    menu_item_id = models.IntegerField('ID เมนู', null=True, blank=True)
+    quantity = models.PositiveIntegerField('จำนวน', default=1)
+    unit_price = models.DecimalField('ราคาต่อหน่วย', max_digits=10, decimal_places=2)
 
     class Meta:
         db_table = 'events_eventorderitem'
+        verbose_name = 'รายการออเดอร์อีเวนต์'
+        verbose_name_plural = 'รายการออเดอร์อีเวนต์'
 
     @property
     def line_total(self):

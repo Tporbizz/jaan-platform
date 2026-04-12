@@ -6,6 +6,11 @@ from .models import (
     StockMovement, Subcategory, Supplier, Unit, WasteRecord,
 )
 
+# --- Thai Admin Site ---
+admin.site.site_header = 'จาน — Restaurant OS'
+admin.site.site_title = 'จาน Admin'
+admin.site.index_title = 'จัดการข้อมูลทั้งหมด'
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

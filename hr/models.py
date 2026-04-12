@@ -15,21 +15,23 @@ class Employee(models.Model):
         CLEANER = 'cleaner', 'แม่บ้าน'
         OTHER = 'other', 'อื่นๆ'
 
-    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='employees')
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    nickname = models.CharField(max_length=50, blank=True)
-    position = models.CharField(max_length=20, choices=Position.choices, default=Position.SERVER)
-    phone = models.CharField(max_length=20, blank=True)
-    base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    ot_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    start_date = models.DateField(default=timezone.now)
-    is_active = models.BooleanField(default=True)
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='employees', verbose_name='ร้าน')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='ผู้ใช้งาน')
+    first_name = models.CharField('ชื่อ', max_length=100)
+    last_name = models.CharField('นามสกุล', max_length=100)
+    nickname = models.CharField('ชื่อเล่น', max_length=50, blank=True)
+    position = models.CharField('ตำแหน่ง', max_length=20, choices=Position.choices, default=Position.SERVER)
+    phone = models.CharField('โทรศัพท์', max_length=20, blank=True)
+    base_salary = models.DecimalField('เงินเดือนพื้นฐาน', max_digits=10, decimal_places=2, default=0)
+    hourly_rate = models.DecimalField('ค่าจ้างรายชั่วโมง', max_digits=8, decimal_places=2, default=0)
+    ot_rate = models.DecimalField('ค่า OT ต่อชั่วโมง', max_digits=8, decimal_places=2, default=0)
+    start_date = models.DateField('วันเริ่มงาน', default=timezone.now)
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
 
     class Meta:
         db_table = 'hr_employee'
+        verbose_name = 'พนักงาน'
+        verbose_name_plural = 'พนักงาน'
         ordering = ['first_name']
 
     @property
@@ -57,15 +59,17 @@ class ShiftSchedule(models.Model):
         SPLIT = 'split', 'สปลิท (10:00-14:00, 17:00-21:00)'
         FULL = 'full', 'เต็มวัน (08:00-20:00)'
 
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='shifts')
-    date = models.DateField()
-    shift_type = models.CharField(max_length=20, choices=ShiftType.choices)
-    start_time = models.TimeField(null=True, blank=True)
-    end_time = models.TimeField(null=True, blank=True)
-    notes = models.CharField(max_length=200, blank=True)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='shifts', verbose_name='พนักงาน')
+    date = models.DateField('วันที่')
+    shift_type = models.CharField('ประเภทกะ', max_length=20, choices=ShiftType.choices)
+    start_time = models.TimeField('เวลาเริ่ม', null=True, blank=True)
+    end_time = models.TimeField('เวลาสิ้นสุด', null=True, blank=True)
+    notes = models.CharField('หมายเหตุ', max_length=200, blank=True)
 
     class Meta:
         db_table = 'hr_shiftschedule'
+        verbose_name = 'ตารางกะ'
+        verbose_name_plural = 'ตารางกะ'
         unique_together = ['employee', 'date']
         ordering = ['date', 'employee']
 
@@ -74,16 +78,18 @@ class ShiftSchedule(models.Model):
 
 
 class Attendance(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance')
-    date = models.DateField()
-    clock_in = models.TimeField(null=True, blank=True)
-    clock_out = models.TimeField(null=True, blank=True)
-    total_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    ot_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    notes = models.CharField(max_length=200, blank=True)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance', verbose_name='พนักงาน')
+    date = models.DateField('วันที่')
+    clock_in = models.TimeField('เวลาเข้า', null=True, blank=True)
+    clock_out = models.TimeField('เวลาออก', null=True, blank=True)
+    total_hours = models.DecimalField('ชั่วโมงรวม', max_digits=5, decimal_places=2, default=0)
+    ot_hours = models.DecimalField('ชั่วโมง OT', max_digits=5, decimal_places=2, default=0)
+    notes = models.CharField('หมายเหตุ', max_length=200, blank=True)
 
     class Meta:
         db_table = 'hr_attendance'
+        verbose_name = 'การเข้างาน'
+        verbose_name_plural = 'การเข้างาน'
         unique_together = ['employee', 'date']
         ordering = ['-date']
 
@@ -103,25 +109,27 @@ class Attendance(models.Model):
 
 
 class PayrollRecord(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='payroll')
-    month = models.PositiveIntegerField()
-    year = models.PositiveIntegerField()
-    base_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    ot_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    bonus = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    gross_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    sso_deduction = models.DecimalField(max_digits=8, decimal_places=2, default=0, help_text='ประกันสังคม 5%')
-    tax_deduction = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    other_deduction = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    net_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    days_worked = models.PositiveIntegerField(default=0)
-    regular_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    ot_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    is_paid = models.BooleanField(default=False)
-    paid_date = models.DateField(null=True, blank=True)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='payroll', verbose_name='พนักงาน')
+    month = models.PositiveIntegerField('เดือน')
+    year = models.PositiveIntegerField('ปี')
+    base_pay = models.DecimalField('เงินเดือน', max_digits=10, decimal_places=2, default=0)
+    ot_pay = models.DecimalField('ค่า OT', max_digits=10, decimal_places=2, default=0)
+    bonus = models.DecimalField('โบนัส', max_digits=10, decimal_places=2, default=0)
+    gross_pay = models.DecimalField('รายได้รวม', max_digits=10, decimal_places=2, default=0)
+    sso_deduction = models.DecimalField('หัก ประกันสังคม', max_digits=8, decimal_places=2, default=0, help_text='ประกันสังคม 5%')
+    tax_deduction = models.DecimalField('หัก ภาษี', max_digits=8, decimal_places=2, default=0)
+    other_deduction = models.DecimalField('หักอื่นๆ', max_digits=8, decimal_places=2, default=0)
+    net_pay = models.DecimalField('รายได้สุทธิ', max_digits=10, decimal_places=2, default=0)
+    days_worked = models.PositiveIntegerField('วันทำงาน', default=0)
+    regular_hours = models.DecimalField('ชั่วโมงปกติ', max_digits=6, decimal_places=2, default=0)
+    ot_hours = models.DecimalField('ชั่วโมง OT', max_digits=6, decimal_places=2, default=0)
+    is_paid = models.BooleanField('จ่ายแล้ว', default=False)
+    paid_date = models.DateField('วันที่จ่าย', null=True, blank=True)
 
     class Meta:
         db_table = 'hr_payroll'
+        verbose_name = 'บันทึกเงินเดือน'
+        verbose_name_plural = 'บันทึกเงินเดือน'
         unique_together = ['employee', 'month', 'year']
         ordering = ['-year', '-month']
 
