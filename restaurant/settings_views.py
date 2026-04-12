@@ -339,10 +339,14 @@ def staff_list(request):
     tenant = request.user.tenant
     from accounts.models import User
     staff = User.objects.filter(tenant=tenant).order_by('department', 'first_name')
+    dept_summary = []
+    for code, label in User.Department.choices:
+        dept_summary.append({'code': code, 'label': label, 'count': staff.filter(department=code).count()})
     context = {
         'staff': staff,
         'roles': User.Role.choices,
         'departments': User.Department.choices,
+        'dept_summary': dept_summary,
     }
     return render(request, 'settings/staff_list.html', context)
 
