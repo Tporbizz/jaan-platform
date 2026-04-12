@@ -22,6 +22,27 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Sidebar — text + color bar */
+        .sidebar-item {
+            width: 56px; height: 48px; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; transition: all 0.15s; text-decoration: none; position: relative;
+        }
+        .sidebar-item:hover { background: #f0e0cc; }
+        .sidebar-item.active { background: #1a1a2e; }
+        .sidebar-item.active .sidebar-label { color: white; }
+        .sidebar-item.active .sidebar-bar { background: #F5C542; }
+        .sidebar-bar {
+            width: 16px; height: 3px; border-radius: 2px;
+            background: #d4c5b5; transition: all 0.15s;
+        }
+        .sidebar-item:hover .sidebar-bar { background: #d4a574; }
+        .sidebar-label {
+            font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em;
+            color: #6b7280; line-height: 1; text-transform: uppercase;
+        }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-cream-50 min-h-screen font-sans">

@@ -43,12 +43,22 @@ class User(AbstractUser):
         STAFF = 'staff', 'Staff'
         READONLY = 'readonly', 'Read Only'
 
+    class Department(models.TextChoices):
+        GM = 'gm', 'GM / Owner'
+        MANAGER = 'manager', 'Manager'
+        FB = 'fb', 'FB (หน้าร้าน/บาร์)'
+        KT = 'kt', 'KT (ครัว)'
+
     tenant = models.ForeignKey(
         Tenant, on_delete=models.CASCADE,
         related_name='users', null=True, blank=True,
     )
     role = models.CharField(
         max_length=20, choices=Role.choices, default=Role.STAFF,
+    )
+    department = models.CharField(
+        max_length=10, choices=Department.choices, default=Department.FB,
+        help_text='แผนกที่สังกัด — กำหนดหน้าที่เข้าถึงได้',
     )
     restaurant_branch = models.ForeignKey(
         RestaurantBranch, on_delete=models.SET_NULL,
@@ -74,3 +84,35 @@ class User(AbstractUser):
     @property
     def is_staff_role(self):
         return self.role in (self.Role.OWNER, self.Role.MANAGER, self.Role.STAFF)
+
+    @property
+    def is_gm(self):
+        return self.department == self.Department.GM or self.role == self.Role.OWNER
+
+    @property
+    def is_kitchen(self):
+        return self.department == self.Department.KT
+
+    @property
+    def is_fb(self):
+        return self.department == self.Department.FB
+
+    @property
+    def can_access_pos(self):
+        """FB, Manager, GM สามารถเข้า POS ได้"""
+        return self.department in (self.Department.FB, self.Department.MANAGER, self.Department.GM) or self.is_manager
+
+    @property
+    def can_access_kitchen(self):
+        """KT, Manager, GM สามารถเข้า Kitchen Display ได้"""
+        return self.department in (self.Department.KT, self.Department.MANAGER, self.Department.GM) or self.is_manager
+
+    @property
+    def can_access_stock(self):
+        """Manager, GM เข้าถึง Stock/Reports"""
+        return self.department in (self.Department.MANAGER, self.Department.GM) or self.is_manager
+
+    @property
+    def can_access_settings(self):
+        """GM เท่านั้นเข้าถึง Settings, P&L, Food Cost"""
+        return self.is_gm or self.role == self.Role.OWNER

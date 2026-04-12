@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}สูตรอาหาร — Settings{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 1.5rem; padding: 1.5rem; width: 100%; max-width: 480px; }
+    .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #e8ddd0; border-radius: 0.75rem; font-size: 0.875rem; outline: none; }
+    .input:focus { border-color: #d4a574; }
+    .btn { padding: 0.5rem 1.25rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-ghost { background: transparent; color: #666; }
+    .recipe-card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.15s; }
+    .recipe-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .fc-good { color: #16a34a; }
+    .fc-warn { color: #ea580c; }
+    .fc-bad { color: #dc2626; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[1000px]">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">Settings</a>
+                    <span class="text-gray-300">/</span>
+                    <span class="text-gray-800 font-semibold text-sm">สูตรอาหาร</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">สูตรอาหาร ({{ recipes|length }})</h1>
+            </div>
+            <button onclick="openModal()" class="btn btn-primary">+ สร้างสูตรใหม่</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {% for r in recipes %}
+            <a href="{% url 'settings:recipe_detail' recipe_id=r.id %}" class="recipe-card">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="font-bold text-gray-800">{{ r.name }}</div>
+                    <div class="text-xs text-gray-400">{{ r.portions }} จาน</div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-500">{{ r.ingredients.count }} วัตถุดิบ</div>
+                    <div class="font-bold text-lg">฿{{ r.calculate_cost|floatformat:0 }}<span class="text-xs text-gray-400 font-normal">/จาน</span></div>
+                </div>
+                {% if r.menu_items.exists %}
+                <div class="mt-2 pt-2 border-t border-cream-50">
+                    {% for m in r.menu_items.all %}
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">{{ m.name }} — ฿{{ m.selling_price|floatformat:0 }}</span>
+                        <span class="font-bold {% if m.food_cost_pct <= 30 %}fc-good{% elif m.food_cost_pct <= 35 %}fc-warn{% else %}fc-bad{% endif %}">
+                            FC {{ m.food_cost_pct }}%
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </a>
+            {% empty %}
+            <div class="card text-center py-12 text-gray-400 col-span-2">ยังไม่มีสูตรอาหาร</div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<!-- Modal: New Recipe -->
+<div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">สร้างสูตรใหม่</h2>
+        <form method="post" action="{% url 'settings:recipe_save' %}">
+            {% csrf_token %}
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">ชื่อสูตร *</label>
+                    <input type="text" name="name" class="input" required placeholder="เช่น แกงส้มปลากะพง">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">จำนวนจาน/สูตร</label>
+                    <input type="number" name="portions" class="input" value="1" min="1">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">วิธีทำ (optional)</label>
+                    <textarea name="preparation_notes" class="input" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">สร้าง</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+</script>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}เมนูอาหาร — Settings{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 1.5rem; padding: 1.5rem; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+    .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #e8ddd0; border-radius: 0.75rem; font-size: 0.875rem; outline: none; }
+    .input:focus { border-color: #d4a574; }
+    select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; padding-right: 2rem; }
+    .btn { padding: 0.5rem 1.25rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-ghost { background: transparent; color: #666; }
+    .fc-good { color: #16a34a; }
+    .fc-warn { color: #ea580c; }
+    .fc-bad { color: #dc2626; }
+    tr:hover td { background: #FEFCF9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[1200px]">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">Settings</a>
+                    <span class="text-gray-300">/</span>
+                    <span class="text-gray-800 font-semibold text-sm">เมนูอาหาร</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">เมนูอาหาร ({{ menus|length }})</h1>
+            </div>
+            <button onclick="openModal()" class="btn btn-primary">+ เพิ่มเมนู</button>
+        </div>
+
+        <div class="card overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-cream-100">
+                        <th class="text-left py-3 px-3 font-semibold text-gray-500">เมนู</th>
+                        <th class="text-left py-3 px-3 font-semibold text-gray-500">ชื่อ EN</th>
+                        <th class="text-left py-3 px-3 font-semibold text-gray-500">ประเภท</th>
+                        <th class="text-right py-3 px-3 font-semibold text-gray-500">ราคาขาย</th>
+                        <th class="text-right py-3 px-3 font-semibold text-gray-500">ต้นทุน</th>
+                        <th class="text-right py-3 px-3 font-semibold text-gray-500">FC%</th>
+                        <th class="text-right py-3 px-3 font-semibold text-gray-500">กำไร</th>
+                        <th class="text-center py-3 px-3 font-semibold text-gray-500">สูตร</th>
+                        <th class="text-center py-3 px-3 font-semibold text-gray-500">เปิดขาย</th>
+                        <th class="text-center py-3 px-3 font-semibold text-gray-500"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in menus %}
+                    <tr class="border-b border-cream-50 {% if not m.is_available %}opacity-40{% endif %}">
+                        <td class="py-3 px-3 font-semibold text-gray-800">{{ m.name }}</td>
+                        <td class="py-3 px-3 text-gray-400 text-xs">{{ m.name_en|default:"-" }}</td>
+                        <td class="py-3 px-3 text-gray-500 text-xs">{{ m.get_menu_category_display }}</td>
+                        <td class="py-3 px-3 text-right font-mono font-bold">฿{{ m.selling_price|floatformat:0 }}</td>
+                        <td class="py-3 px-3 text-right font-mono text-gray-500">
+                            {% if m.recipe %}฿{{ m.recipe.calculate_cost|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-right font-mono font-bold
+                            {% if m.food_cost_pct != None %}
+                                {% if m.food_cost_pct <= 30 %}fc-good{% elif m.food_cost_pct <= 35 %}fc-warn{% else %}fc-bad{% endif %}
+                            {% endif %}">
+                            {% if m.food_cost_pct != None %}{{ m.food_cost_pct }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-right font-mono">
+                            {% if m.gross_profit != None %}฿{{ m.gross_profit|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-center text-xs">
+                            {% if m.recipe %}
+                            <span class="text-green-600 font-semibold">{{ m.recipe.name|truncatechars:15 }}</span>
+                            {% else %}
+                            <span class="text-gray-300">ยังไม่มี</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            {% if m.is_available %}
+                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">ON</span>
+                            {% else %}
+                            <span class="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">OFF</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-center">
+                            <button onclick="editMenu({{ m.id }}, '{{ m.name|escapejs }}', '{{ m.name_en|escapejs }}', '{{ m.menu_category }}', '{{ m.selling_price }}', '{{ m.recipe_id|default:"" }}', {{ m.is_available|yesno:'true,false' }}, {{ m.sort_order }})"
+                                class="text-blue-500 hover:text-blue-700 text-xs font-semibold">แก้ไข</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="py-12 text-center text-gray-400">ยังไม่มีเมนู</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">เพิ่มเมนู</h2>
+        <form method="post" action="{% url 'settings:menu_save' %}">
+            {% csrf_token %}
+            <input type="hidden" name="menu_id" id="f-id" value="">
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ชื่อเมนู (TH) *</label>
+                        <input type="text" name="name" id="f-name" class="input" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ชื่อ EN</label>
+                        <input type="text" name="name_en" id="f-name-en" class="input">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ประเภท</label>
+                        <select name="menu_category" id="f-cat" class="input">
+                            {% for val, label in menu_categories %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ราคาขาย (฿) *</label>
+                        <input type="number" name="selling_price" id="f-price" class="input" required step="1">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">สูตรอาหาร</label>
+                    <select name="recipe" id="f-recipe" class="input">
+                        <option value="">-- ยังไม่ผูกสูตร --</option>
+                        {% for r in recipes %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ลำดับ</label>
+                        <input type="number" name="sort_order" id="f-sort" class="input" value="0">
+                    </div>
+                    <div class="flex items-end pb-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="is_available" id="f-avail" checked class="w-4 h-4 rounded">
+                            <span class="text-sm font-semibold text-gray-700">เปิดขาย</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึก</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('modal-title').textContent = 'เพิ่มเมนู';
+    document.getElementById('f-id').value = '';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-name-en').value = '';
+    document.getElementById('f-cat').selectedIndex = 0;
+    document.getElementById('f-price').value = '';
+    document.getElementById('f-recipe').value = '';
+    document.getElementById('f-sort').value = '0';
+    document.getElementById('f-avail').checked = true;
+    document.getElementById('modal').classList.add('open');
+}
+function editMenu(id, name, nameEn, cat, price, recipeId, avail, sort) {
+    document.getElementById('modal-title').textContent = 'แก้ไข: ' + name;
+    document.getElementById('f-id').value = id;
+    document.getElementById('f-name').value = name;
+    document.getElementById('f-name-en').value = nameEn;
+    document.getElementById('f-cat').value = cat;
+    document.getElementById('f-price').value = price;
+    document.getElementById('f-recipe').value = recipeId;
+    document.getElementById('f-sort').value = sort;
+    document.getElementById('f-avail').checked = avail;
+    document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+</script>
+{% endblock %}

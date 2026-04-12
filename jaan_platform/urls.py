@@ -14,7 +14,9 @@ def health_check(request):
 
 
 def landing(request):
-    return render(request, 'landing.html')
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    return redirect('login')
 
 
 def dashboard(request):
@@ -104,6 +106,8 @@ urlpatterns = [
     path('hr/', include('hr.urls', namespace='hr')),
     path('hotel/', include('hotel_integration.urls', namespace='hotel_integration')),
     path('reports/', include('reports.urls', namespace='reports')),
+    path('settings/', include(('restaurant.settings_urls', 'settings'), namespace='settings')),
+    path('ai/', include(('restaurant.ai_urls', 'ai'), namespace='ai')),
     path('api/accounts/', include('accounts.urls', namespace='accounts')),
 ]
 

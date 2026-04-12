@@ -76,24 +76,24 @@
         <!-- Payment Method -->
         <div class="grid grid-cols-3 gap-2 mb-4">
             <div class="pay-method active" data-method="cash" onclick="selectMethod('cash', this)">
-                <div class="text-xl mb-1">💵</div>
-                <div class="text-xs font-semibold">เงินสด</div>
+                <div class="text-xs font-bold">CASH</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">เงินสด</div>
             </div>
             <div class="pay-method" data-method="promptpay" onclick="selectMethod('promptpay', this)">
-                <div class="text-xl mb-1">📱</div>
-                <div class="text-xs font-semibold">PromptPay</div>
+                <div class="text-xs font-bold">QR</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">PromptPay</div>
             </div>
             <div class="pay-method" data-method="card" onclick="selectMethod('card', this)">
-                <div class="text-xl mb-1">💳</div>
-                <div class="text-xs font-semibold">บัตร</div>
+                <div class="text-xs font-bold">CARD</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">บัตร</div>
             </div>
             <div class="pay-method" data-method="room_charge" onclick="selectMethod('room_charge', this)">
-                <div class="text-xl mb-1">🏨</div>
-                <div class="text-xs font-semibold">เซ็นห้อง</div>
+                <div class="text-xs font-bold">ROOM</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">เซ็นห้อง</div>
             </div>
             <div class="pay-method" data-method="transfer" onclick="selectMethod('transfer', this)">
-                <div class="text-xl mb-1">🏦</div>
-                <div class="text-xs font-semibold">โอนเงิน</div>
+                <div class="text-xs font-bold">TRANSFER</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">โอนเงิน</div>
             </div>
         </div>
 
@@ -101,6 +101,18 @@
         <div id="ref-input" class="mb-4 hidden">
             <input type="text" id="reference" placeholder="เลขห้อง / Ref number"
                 class="w-full px-4 py-3 border border-cream-200 rounded-xl text-sm">
+        </div>
+
+        <!-- PromptPay QR -->
+        <div id="qr-section" class="mb-4 hidden">
+            <div class="bg-white rounded-xl border border-cream-200 p-4 text-center">
+                <div class="text-xs text-gray-400 mb-2">สแกน QR เพื่อโอนเงิน</div>
+                <div id="qr-container" class="flex justify-center mb-2">
+                    <canvas id="qr-canvas"></canvas>
+                </div>
+                <div class="text-lg font-bold text-gray-800">฿{{ order.total|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400 mt-1">PromptPay: {{ promptpay_id|default:"0812345678" }}</div>
+            </div>
         </div>
 
         <!-- Amount display -->
@@ -139,7 +151,7 @@
         <div class="mt-auto">
             <button onclick="processPayment()" id="btn-pay"
                 class="w-full py-4 bg-green-600 text-white text-lg font-bold rounded-xl hover:bg-green-700 transition">
-                ชำระเงิน ✅
+                ชำระเงิน
             </button>
         </div>
     </div>
@@ -148,7 +160,9 @@
 <!-- Success -->
 <div class="success-overlay" id="success-overlay">
     <div class="card text-center" style="max-width: 360px;">
-        <div class="text-5xl mb-4">✅</div>
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
         <div class="text-2xl font-bold mb-2">ชำระเงินสำเร็จ!</div>
         <div class="text-gray-500 mb-1" id="success-change"></div>
         <div class="text-gray-400 text-sm mb-4" id="success-order"></div>
@@ -160,8 +174,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 const csrfToken = '{{ csrf_token }}';
+const promptPayId = '{{ promptpay_id|default:"0812345678" }}';
 const orderId = {{ order.id }};
 const orderTotal = {{ order.total }};
 let selectedMethod = 'cash';
@@ -174,12 +190,19 @@ function selectMethod(method, el) {
 
     const refInput = document.getElementById('ref-input');
     const numpad = document.getElementById('numpad');
-    const cashSection = document.getElementById('cash-section');
+    const qrSection = document.getElementById('qr-section');
+
+    // Hide all conditional sections
+    refInput.classList.add('hidden');
+    qrSection.classList.add('hidden');
 
     if (method === 'room_charge' || method === 'transfer') {
         refInput.classList.remove('hidden');
-    } else {
-        refInput.classList.add('hidden');
+    }
+
+    if (method === 'promptpay') {
+        qrSection.classList.remove('hidden');
+        generateQR();
     }
 
     if (method === 'cash') {
@@ -252,9 +275,85 @@ function processPayment() {
         } else {
             alert(data.error || 'เกิดข้อผิดพลาด');
             btn.disabled = false;
-            btn.textContent = 'ชำระเงิน ✅';
+            btn.textContent = 'ชำระเงิน';
         }
     });
+}
+
+// PromptPay QR Generator (Thai QR Payment standard - EMVCo)
+function generatePromptPayPayload(phoneOrId, amount) {
+    // Simplified PromptPay payload
+    const id = phoneOrId.replace(/-/g, '');
+    let aid;
+    if (id.length === 10) {
+        // Phone number — prefix with 0066 (remove leading 0)
+        aid = '0066' + id.substring(1);
+    } else {
+        aid = id; // National ID or other
+    }
+
+    function tlv(tag, value) {
+        return tag + String(value.length).padStart(2, '0') + value;
+    }
+
+    let payload = '';
+    payload += tlv('00', '01'); // Payload Format Indicator
+    payload += tlv('01', '12'); // Point of Initiation (dynamic)
+
+    // Merchant Account Info (PromptPay)
+    let merchantInfo = '';
+    merchantInfo += tlv('00', 'A000000677010111'); // PromptPay AID
+    if (aid.length === 13) {
+        merchantInfo += tlv('02', aid); // Phone
+    } else {
+        merchantInfo += tlv('01', aid); // National ID
+    }
+    payload += tlv('29', merchantInfo);
+
+    payload += tlv('53', '764'); // Currency (THB)
+    if (amount > 0) {
+        payload += tlv('54', amount.toFixed(2)); // Amount
+    }
+    payload += tlv('58', 'TH'); // Country
+    payload += tlv('59', 'SARAKAO'); // Merchant Name
+    payload += tlv('60', 'TRANG'); // City
+
+    // CRC placeholder
+    payload += '6304';
+
+    // Calculate CRC16-CCITT
+    function crc16(str) {
+        let crc = 0xFFFF;
+        for (let i = 0; i < str.length; i++) {
+            crc ^= str.charCodeAt(i) << 8;
+            for (let j = 0; j < 8; j++) {
+                crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+                crc &= 0xFFFF;
+            }
+        }
+        return crc.toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    return payload.slice(0, -4) + '6304' + crc16(payload);
+}
+
+function generateQR() {
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+
+    const payload = generatePromptPayPayload(promptPayId, orderTotal);
+
+    if (typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(canvas, payload, {
+            width: 200,
+            margin: 2,
+            color: { dark: '#1a1a2e', light: '#ffffff' },
+        });
+    } else {
+        container.innerHTML = '<div class="text-sm text-gray-400 py-8">QR loading...</div>';
+    }
 }
 </script>
 {% endblock %}

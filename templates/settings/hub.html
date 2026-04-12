@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Settings — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .setting-card { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; background: white; border-radius: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.15s; }
+    .setting-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .icon-box { width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[1000px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+                <p class="text-gray-400 mt-1">ตั้งค่าข้อมูลหลัก — วัตถุดิบ, เมนู, พนักงาน, Supplier</p>
+            </div>
+            <a href="/dashboard/" class="px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50 transition">
+                Dashboard
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Items -->
+            <a href="{% url 'settings:item_list' %}" class="setting-card">
+                <div class="icon-box bg-blue-50 text-blue-600">📦</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">วัตถุดิบ</div>
+                    <div class="text-sm text-gray-400">เพิ่ม/แก้ไข วัตถุดิบ, stock, ราคาทุน</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ items_count }}</div>
+            </a>
+
+            <!-- Menu -->
+            <a href="{% url 'settings:menu_list' %}" class="setting-card">
+                <div class="icon-box bg-orange-50 text-orange-600">🍽️</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">เมนูอาหาร</div>
+                    <div class="text-sm text-gray-400">เพิ่ม/แก้ไข เมนู, ราคาขาย, สูตรอาหาร</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ menu_count }}</div>
+            </a>
+
+            <!-- Suppliers -->
+            <a href="{% url 'settings:supplier_list' %}" class="setting-card">
+                <div class="icon-box bg-green-50 text-green-600">🏪</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">Supplier</div>
+                    <div class="text-sm text-gray-400">ร้านค้า, เบอร์โทร, Line ID</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ suppliers_count }}</div>
+            </a>
+
+            <!-- Employees -->
+            <a href="{% url 'settings:employee_list' %}" class="setting-card">
+                <div class="icon-box bg-purple-50 text-purple-600">👥</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">พนักงาน</div>
+                    <div class="text-sm text-gray-400">เพิ่ม/แก้ไข พนักงาน, ตำแหน่ง, เงินเดือน</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ employees_count }}</div>
+            </a>
+
+            <!-- Units -->
+            <a href="{% url 'settings:unit_list' %}" class="setting-card">
+                <div class="icon-box bg-amber-50 text-amber-600">📏</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">หน่วยนับ</div>
+                    <div class="text-sm text-gray-400">กก., ขวด, ถุง, กล่อง, ลิตร</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ units_count }}</div>
+            </a>
+
+            <!-- Categories -->
+            <a href="{% url 'settings:category_list' %}" class="setting-card">
+                <div class="icon-box bg-pink-50 text-pink-600">🏷️</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">หมวดหมู่</div>
+                    <div class="text-sm text-gray-400">จัดกลุ่มวัตถุดิบ</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ categories_count }}</div>
+            </a>
+        </div>
+
+            <!-- Staff Accounts -->
+            <a href="{% url 'settings:staff_list' %}" class="setting-card">
+                <div class="icon-box bg-teal-50 text-teal-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 11-4 0 2 2 0 014 0zM12 14c-3.5 0-6 1.5-6 3v1h12v-1c0-1.5-2.5-3-6-3zM19 8v-2m0 0V4m0 2h-2m2 0h2"/></svg>
+                </div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">บัญชีพนักงาน</div>
+                    <div class="text-sm text-gray-400">สร้าง/แก้ไข login, แผนก, สิทธิ์เข้าถึง</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ staff_count }}</div>
+            </a>
+        </div>
+
+        <!-- Recipe Builder -->
+        <div class="mt-4">
+            <a href="{% url 'settings:recipe_list' %}" class="setting-card">
+                <div class="icon-box bg-red-50 text-red-600">🧑‍🍳</div>
+                <div class="flex-1">
+                    <div class="font-bold text-gray-800">สูตรอาหาร (Recipe Builder)</div>
+                    <div class="text-sm text-gray-400">สร้าง/แก้สูตร, คำนวณต้นทุนอัตโนมัติ, ตั้งราคาขาย</div>
+                </div>
+                <div class="text-2xl font-extrabold text-gray-300">{{ recipe_count }}</div>
+            </a>
+        </div>
+    </main>
+</div>
+{% endblock %}

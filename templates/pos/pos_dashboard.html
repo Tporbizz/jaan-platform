@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}POS Dashboard — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.25rem; color: white; }
+    .card-accent { background: linear-gradient(135deg, #d4a574, #c4956a); border-radius: 1.25rem; padding: 1.25rem; color: white; }
+    .kpi { text-align: center; }
+    .kpi-value { font-size: 1.75rem; font-weight: 800; line-height: 1.2; }
+    .kpi-label { font-size: 0.7rem; opacity: 0.6; margin-top: 0.25rem; }
+    .progress-bar { height: 8px; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+    .segment-bar { height: 24px; border-radius: 6px; display: flex; overflow: hidden; }
+    .fc-good { color: #16a34a; }
+    .fc-warn { color: #ea580c; }
+    .rank-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='pos' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[1200px]">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">POS Dashboard</h1>
+                <p class="text-gray-400 text-sm mt-0.5">{{ today|date:"d/m/Y" }} — สารข้าว Restaurant</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'pos:table_map' %}" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                    เปิด POS
+                </a>
+                <a href="{% url 'pos:kitchen_display' %}" class="px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50 transition">
+                    Kitchen
+                </a>
+            </div>
+        </div>
+
+        <!-- Row 1: Revenue KPIs -->
+        <div class="grid grid-cols-5 gap-3 mb-4">
+            <!-- Today Revenue (main) -->
+            <div class="card-dark col-span-2">
+                <div class="text-xs opacity-50">ยอดวันนี้</div>
+                <div class="text-3xl font-extrabold mt-1">฿{{ today_revenue|floatformat:0 }}</div>
+                <div class="flex items-center gap-3 mt-2 text-xs opacity-60">
+                    <span>{{ today_count }} ออเดอร์</span>
+                    <span>{{ today_covers }} คน</span>
+                    <span>Avg ฿{{ avg_check|floatformat:0 }}/คน</span>
+                </div>
+                {% if daily_target %}
+                <div class="mt-3">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="opacity-50">เป้าวัน ฿{{ daily_target|floatformat:0 }}</span>
+                        <span class="font-bold {% if target_pct >= 100 %}text-green-400{% elif target_pct >= 70 %}text-yellow-300{% else %}text-red-400{% endif %}">{{ target_pct|floatformat:0 }}%</span>
+                    </div>
+                    <div class="progress-bar bg-white/20">
+                        <div class="progress-fill {% if target_pct >= 100 %}bg-green-400{% elif target_pct >= 70 %}bg-yellow-300{% else %}bg-red-400{% endif %}"
+                             style="width: {{ target_pct|floatformat:0 }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Month Revenue -->
+            <div class="card kpi">
+                <div class="kpi-label text-gray-500">ยอดเดือนนี้</div>
+                <div class="kpi-value text-gray-800">฿{{ month_revenue|floatformat:0 }}</div>
+                <div class="kpi-label text-gray-400">{{ month_count }} ออเดอร์ · {{ month_covers }} คน</div>
+                {% if revenue_target %}
+                <div class="mt-2 text-xs">
+                    <span class="font-bold {% if month_revenue >= revenue_target %}fc-good{% else %}text-gray-500{% endif %}">
+                        {{ month_revenue|floatformat:0 }} / {{ revenue_target|floatformat:0 }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Tables -->
+            <div class="card kpi">
+                <div class="kpi-label text-gray-500">โต๊ะ</div>
+                <div class="kpi-value text-gray-800">{{ occupied }}/{{ total_tables }}</div>
+                <div class="kpi-label text-gray-400">occupied</div>
+            </div>
+
+            <!-- FC Target -->
+            <div class="card kpi">
+                <div class="kpi-label text-gray-500">FC% เป้า</div>
+                <div class="kpi-value {% if kpi %}text-gray-800{% else %}text-gray-300{% endif %}">
+                    {% if kpi %}{{ kpi.food_cost_target_pct }}%{% else %}-{% endif %}
+                </div>
+                <div class="kpi-label text-gray-400">เป้า ≤{{ kpi.food_cost_target_pct|default:"33" }}%</div>
+            </div>
+        </div>
+
+        <!-- Row 2: USP + Push Menus -->
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <!-- USP Card -->
+            <div class="card-accent">
+                <div class="text-xs opacity-70 mb-2">USP — จุดขายร้าน</div>
+                <div class="font-bold text-lg leading-tight">อาหารใต้แท้ ตรัง</div>
+                <div class="text-sm opacity-80 mt-1">วัตถุดิบท้องถิ่น สด ทุกวัน</div>
+                <div class="mt-3 space-y-1 text-xs opacity-70">
+                    <div>- อาหารทะเลสดจากทะเลตรัง</div>
+                    <div>- สูตรต้นตำรับ ปรุงสดใหม่ทุกจาน</div>
+                    <div>- ผักพื้นบ้าน (เหลียง, ผักกูด, สะตอ)</div>
+                </div>
+            </div>
+
+            <!-- Push Menus (high margin) -->
+            <div class="card col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-800">เมนูแนะนำ Push</h3>
+                    <span class="text-xs text-gray-400">กำไรสูง · FC ≤ 35%</span>
+                </div>
+                {% if push_menus %}
+                <div class="space-y-2">
+                    {% for m in push_menus %}
+                    <div class="flex items-center justify-between bg-green-50 rounded-xl px-3 py-2">
+                        <div class="flex items-center gap-2">
+                            <div class="rank-badge bg-green-600 text-white">{{ forloop.counter }}</div>
+                            <span class="text-sm font-semibold text-gray-800">{{ m.name }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <span class="text-gray-500">฿{{ m.price|floatformat:0 }}</span>
+                            <span class="font-bold fc-good">FC {{ m.fc_pct }}%</span>
+                            <span class="font-bold text-gray-800">กำไร ฿{{ m.gross_profit|floatformat:0 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-4">ยังไม่มีเมนูที่ FC ≤ 35%</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Row 3: Top Sellers + Customer Segments -->
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Top Sellers -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-800">Top Sellers เดือนนี้</h3>
+                    <span class="text-xs text-gray-400">{{ month_count }} ออเดอร์</span>
+                </div>
+                {% if top_sellers %}
+                <div class="space-y-2">
+                    {% for item in top_sellers %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="rank-badge {% if forloop.counter <= 3 %}bg-amber-400 text-white{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                {{ forloop.counter }}
+                            </div>
+                            <span class="text-sm font-semibold text-gray-800">{{ item.menu_item__name }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <span class="text-gray-500">{{ item.total_qty }} จาน</span>
+                            <span class="font-mono font-bold text-gray-800">฿{{ item.total_revenue|floatformat:0 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-8">ยังไม่มีข้อมูลการขาย</p>
+                {% endif %}
+            </div>
+
+            <!-- Customer Segments (STP) -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-800">ลูกค้า (STP Analysis)</h3>
+                    <span class="text-xs text-gray-400">เดือนนี้</span>
+                </div>
+
+                {% if segment_list %}
+                <!-- Segment Bar -->
+                <div class="segment-bar mb-4">
+                    {% for seg in segment_list %}
+                    <div style="width: {{ seg.pct }}%; background: {% if seg.key == 'couple' %}#ec4899{% elif seg.key == 'family' %}#f59e0b{% elif seg.key == 'group' %}#6366f1{% elif seg.key == 'senior' %}#10b981{% else %}#94a3b8{% endif %}"
+                         title="{{ seg.label }} {{ seg.pct }}%"></div>
+                    {% endfor %}
+                </div>
+
+                <div class="space-y-2">
+                    {% for seg in segment_list %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full" style="background: {% if seg.key == 'couple' %}#ec4899{% elif seg.key == 'family' %}#f59e0b{% elif seg.key == 'group' %}#6366f1{% elif seg.key == 'senior' %}#10b981{% else %}#94a3b8{% endif %}"></div>
+                            <span class="text-sm text-gray-700">{{ seg.label }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm">
+                            <span class="text-gray-400">{{ seg.count }} ออเดอร์</span>
+                            <span class="font-bold text-gray-800">{{ seg.pct }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- STP Insight -->
+                <div class="mt-4 pt-3 border-t border-cream-100">
+                    <div class="text-xs font-semibold text-gray-500 mb-1">Targeting Insight</div>
+                    <p class="text-xs text-gray-400">
+                        {% if segment_list.0.key == 'couple' %}
+                        คู่รักเป็นกลุ่มหลัก — เน้นเมนู share set, เมนู photo-worthy, โปรโมชั่นคู่
+                        {% elif segment_list.0.key == 'family' %}
+                        ครอบครัวเป็นกลุ่มหลัก — เพิ่มเมนูเด็ก, set สำหรับครอบครัว, โซนนั่งสบาย
+                        {% elif segment_list.0.key == 'group' %}
+                        กลุ่มเพื่อนเป็นกลุ่มหลัก — เน้น sharing menu, เมนูจานใหญ่, เครื่องดื่ม
+                        {% elif segment_list.0.key == 'senior' %}
+                        ผู้สูงอายุเป็นกลุ่มหลัก — เน้นอาหารนุ่ม, รสไม่จัด, บริการใส่ใจ
+                        {% else %}
+                        ลูกค้าทั่วไปหลากหลาย — เน้น signature menu เด่นๆ, ให้ครบทุก segment
+                        {% endif %}
+                    </p>
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-8">ยังไม่มีข้อมูลลูกค้า</p>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -203,20 +203,36 @@ class RecipeItem(models.Model):
 
 class MenuItem(models.Model):
     class MenuCategory(models.TextChoices):
-        APPETIZER = 'appetizer', 'อาหารเรียกน้ำย่อย'
-        MAIN = 'main', 'อาหารจานหลัก'
-        SOUP = 'soup', 'แกง/ต้ม'
-        SALAD = 'salad', 'ยำ/สลัด'
+        SOUP = 'soup', 'แกง'
         STIR_FRY = 'stir_fry', 'ผัด'
+        BOIL = 'boil', 'ต้ม'
         DEEP_FRY = 'deep_fry', 'ทอด'
+        CHILI_PASTE = 'chili_paste', 'ชุดน้ำพริก'
+        SALAD = 'salad', 'ยำ'
+        STEAK = 'steak', 'สเต๊ก'
+        SINGLE_DISH = 'single_dish', 'อาหารจานเดียว'
+        PASTA = 'pasta', 'พาสต้า'
+        SNACK = 'snack', 'อาหารทานเล่น'
         DESSERT = 'dessert', 'ของหวาน'
-        BEVERAGE = 'beverage', 'เครื่องดื่ม'
+        COCKTAIL = 'cocktail', 'Cocktails'
+        MOCKTAIL = 'mocktail', 'Mocktails'
+        SMOOTHIE = 'smoothie', 'Smoothie / Shake'
+        COFFEE = 'coffee', 'Coffee & Tea'
+        BEER = 'beer', 'Beer'
+        SOFT_DRINK = 'soft_drink', 'Soft Drink'
         SET_MENU = 'set_menu', 'ชุดเซ็ท'
+
+    class PrepStation(models.TextChoices):
+        KITCHEN = 'kitchen', 'ครัว'
+        BAR = 'bar', 'บาร์/เครื่องดื่ม'
 
     tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='menu_items')
     name = models.CharField(max_length=200)
     name_en = models.CharField(max_length=200, blank=True)
-    menu_category = models.CharField(max_length=20, choices=MenuCategory.choices, default=MenuCategory.MAIN)
+    menu_category = models.CharField(max_length=20, choices=MenuCategory.choices, default=MenuCategory.STIR_FRY)
+    prep_station = models.CharField(max_length=10, choices=PrepStation.choices, default=PrepStation.KITCHEN,
+                                    help_text='ครัว = ส่ง KDS, บาร์ = FB ทำเอง ไม่ส่งครัว')
+    prep_time_minutes = models.PositiveIntegerField(default=10, help_text='เวลาเตรียม (นาที)')
     recipe = models.ForeignKey(Recipe, on_delete=models.SET_NULL, null=True, blank=True, related_name='menu_items')
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='menu/', blank=True)

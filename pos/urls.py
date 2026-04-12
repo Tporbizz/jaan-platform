@@ -5,13 +5,16 @@ from . import views
 app_name = 'pos'
 
 urlpatterns = [
+    # POS Dashboard
+    path('', views.pos_dashboard, name='pos_dashboard'),
     # Table Map
-    path('', views.table_map, name='table_map'),
+    path('tables/', views.table_map, name='table_map'),
     path('table/<int:table_id>/open/', views.open_table, name='open_table'),
 
     # Order
     path('order/<int:order_id>/', views.order_view, name='order_view'),
     path('order/<int:order_id>/add/', views.add_item, name='add_item'),
+    path('order/<int:order_id>/add-custom/', views.add_custom_item, name='add_custom_item'),
     path('order/<int:order_id>/void/<int:item_id>/', views.void_item, name='void_item'),
     path('order/<int:order_id>/send/', views.send_to_kitchen, name='send_to_kitchen'),
     path('order/<int:order_id>/data/', views.order_data, name='order_data'),

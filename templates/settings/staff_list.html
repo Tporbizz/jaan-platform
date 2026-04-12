@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}บัญชีพนักงาน — Settings — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .dept-gm { background: #fef2f2; color: #dc2626; }
+    .dept-manager { background: #f0fdf4; color: #16a34a; }
+    .dept-fb { background: #eff6ff; color: #2563eb; }
+    .dept-kt { background: #fef9c3; color: #a16207; }
+    .role-badge { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-weight: 700; text-transform: uppercase; }
+    .staff-row { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f5ebe0; transition: background 0.1s; }
+    .staff-row:last-child { border-bottom: none; }
+    .staff-row:hover { background: #fef7ed; }
+    .avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .modal-bg.show { display: flex; }
+    .modal { background: white; border-radius: 1.5rem; padding: 2rem; width: 480px; max-height: 90vh; overflow-y: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='settings' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[1000px]">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">Settings</a>
+                    <span class="text-gray-300">/</span>
+                    <span class="text-sm font-semibold text-gray-700">บัญชีพนักงาน</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">บัญชีพนักงาน (Login)</h1>
+                <p class="text-gray-400 text-sm mt-0.5">สร้าง/แก้ไข account สำหรับ login เข้าระบบ</p>
+            </div>
+            <button onclick="openModal()" class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                + สร้างบัญชีใหม่
+            </button>
+        </div>
+
+        <!-- Department Summary -->
+        <div class="grid grid-cols-4 gap-3 mb-6">
+            {% for dept_code, dept_label in departments %}
+            <div class="card text-center">
+                <div class="text-xs text-gray-400">{{ dept_label }}</div>
+                <div class="text-2xl font-extrabold text-gray-800">
+                    {% with count=0 %}
+                    {% for s in staff %}{% if s.department == dept_code %}{{ forloop.parentloop.counter|default:"" }}{% endif %}{% endfor %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Staff List -->
+        <div class="card">
+            {% if staff %}
+            {% for s in staff %}
+            <div class="staff-row">
+                <div class="avatar-circle {% if s.department == 'gm' %}bg-red-100 text-red-600{% elif s.department == 'manager' %}bg-green-100 text-green-600{% elif s.department == 'fb' %}bg-blue-100 text-blue-600{% else %}bg-amber-100 text-amber-600{% endif %}">
+                    {{ s.first_name|truncatechars:1 }}{{ s.last_name|truncatechars:1 }}
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-gray-800">{{ s.first_name }} {{ s.last_name }}</span>
+                        <span class="role-badge {% if s.department == 'gm' %}dept-gm{% elif s.department == 'manager' %}dept-manager{% elif s.department == 'fb' %}dept-fb{% else %}dept-kt{% endif %}">{{ s.get_department_display }}</span>
+                        <span class="role-badge bg-gray-100 text-gray-500">{{ s.get_role_display }}</span>
+                        {% if not s.is_active %}<span class="role-badge bg-red-100 text-red-500">ปิดใช้งาน</span>{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-400 mt-0.5">
+                        @{{ s.username }}{% if s.phone %} · {{ s.phone }}{% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="editStaff({{ s.id }}, '{{ s.username }}', '{{ s.first_name }}', '{{ s.last_name }}', '{{ s.role }}', '{{ s.department }}', '{{ s.phone }}')"
+                        class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        แก้ไข
+                    </button>
+                    <button onclick="resetPassword({{ s.id }}, '{{ s.first_name }}')"
+                        class="px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition">
+                        Reset PW
+                    </button>
+                    {% if s.id != user.id %}
+                    <button onclick="toggleStaff({{ s.id }})"
+                        class="px-3 py-1.5 text-xs font-semibold {% if s.is_active %}text-red-500 bg-red-50 hover:bg-red-100{% else %}text-green-600 bg-green-50 hover:bg-green-100{% endif %} rounded-lg transition">
+                        {% if s.is_active %}ปิด{% else %}เปิด{% endif %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="text-center py-10 text-gray-400">ยังไม่มีบัญชีพนักงาน</div>
+            {% endif %}
+        </div>
+
+        <!-- Department Access Legend -->
+        <div class="card mt-4">
+            <h3 class="font-bold text-gray-800 mb-3 text-sm">สิทธิ์เข้าถึงตามแผนก</h3>
+            <div class="grid grid-cols-4 gap-3 text-xs">
+                <div>
+                    <div class="font-bold text-red-600 mb-1">GM / Owner</div>
+                    <div class="text-gray-400 space-y-0.5">
+                        <div>Settings, P&L, Food Cost</div>
+                        <div>POS, Kitchen, Stock</div>
+                        <div>Reports ทั้งหมด</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="font-bold text-green-600 mb-1">Manager</div>
+                    <div class="text-gray-400 space-y-0.5">
+                        <div>POS, Kitchen Display</div>
+                        <div>Stock, Reports</div>
+                        <div>จัดการพนักงาน</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="font-bold text-blue-600 mb-1">FB (หน้าร้าน)</div>
+                    <div class="text-gray-400 space-y-0.5">
+                        <div>POS, Payment</div>
+                        <div>เครื่องดื่ม (ทำเอง)</div>
+                        <div>AI Content Studio</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="font-bold text-amber-600 mb-1">KT (ครัว)</div>
+                    <div class="text-gray-400 space-y-0.5">
+                        <div>Kitchen Display</div>
+                        <div>เวลาทำอาหาร</div>
+                        <div>รับ ticket</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal: Add/Edit Staff -->
+<div id="staffModal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2 id="modalTitle" class="text-xl font-bold text-gray-900 mb-4">สร้างบัญชีใหม่</h2>
+        <form method="POST" action="{% url 'settings:staff_save' %}">
+            {% csrf_token %}
+            <input type="hidden" name="staff_id" id="staffId">
+
+            <div class="space-y-3">
+                <div id="usernameGroup">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Username</label>
+                    <input name="username" id="staffUsername" type="text" required
+                        class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400"
+                        placeholder="เช่น somchai, noona">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">ชื่อ</label>
+                        <input name="first_name" id="staffFirst" type="text" required
+                            class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">นามสกุล</label>
+                        <input name="last_name" id="staffLast" type="text"
+                            class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Password</label>
+                    <input name="password" id="staffPassword" type="text"
+                        class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400"
+                        placeholder="ว่างไว้ = ไม่เปลี่ยน (สร้างใหม่ default: jaan1234)">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">แผนก</label>
+                        <select name="department" id="staffDept"
+                            class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400">
+                            {% for code, label in departments %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Role</label>
+                        <select name="role" id="staffRole"
+                            class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400">
+                            {% for code, label in roles %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">เบอร์โทร</label>
+                    <input name="phone" id="staffPhone" type="text"
+                        class="w-full border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-jaan-400">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button type="submit" class="flex-1 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
+                    บันทึก
+                </button>
+                <button type="button" onclick="closeModal()" class="px-6 py-2.5 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-200 transition">
+                    ยกเลิก
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+function openModal() {
+    document.getElementById('modalTitle').textContent = 'สร้างบัญชีใหม่';
+    document.getElementById('staffId').value = '';
+    document.getElementById('staffUsername').value = '';
+    document.getElementById('staffUsername').disabled = false;
+    document.getElementById('usernameGroup').style.display = '';
+    document.getElementById('staffFirst').value = '';
+    document.getElementById('staffLast').value = '';
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffPassword').placeholder = 'ว่างไว้ = default: jaan1234';
+    document.getElementById('staffDept').value = 'fb';
+    document.getElementById('staffRole').value = 'staff';
+    document.getElementById('staffPhone').value = '';
+    document.getElementById('staffModal').classList.add('show');
+}
+
+function editStaff(id, username, first, last, role, dept, phone) {
+    document.getElementById('modalTitle').textContent = 'แก้ไขบัญชี — ' + first;
+    document.getElementById('staffId').value = id;
+    document.getElementById('staffUsername').value = username;
+    document.getElementById('staffUsername').disabled = true;
+    document.getElementById('staffFirst').value = first;
+    document.getElementById('staffLast').value = last;
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffPassword').placeholder = 'ว่างไว้ = ไม่เปลี่ยน password';
+    document.getElementById('staffDept').value = dept;
+    document.getElementById('staffRole').value = role;
+    document.getElementById('staffPhone').value = phone;
+    document.getElementById('staffModal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('staffModal').classList.remove('show');
+}
+
+function toggleStaff(id) {
+    if (!confirm('ต้องการเปิด/ปิดบัญชีนี้?')) return;
+    fetch(`/settings/staff/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+    })
+    .then(r => r.json())
+    .then(data => { if (data.ok) window.location.reload(); });
+}
+
+function resetPassword(id, name) {
+    const pw = prompt(`ตั้ง password ใหม่ให้ ${name}:`, 'jaan1234');
+    if (!pw) return;
+    fetch(`/settings/staff/${id}/reset-password/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+        body: `password=${encodeURIComponent(pw)}`,
+    })
+    .then(r => r.json())
+    .then(data => { if (data.ok) alert(`Reset password สำเร็จ`); });
+}
+</script>
+{% endblock %}

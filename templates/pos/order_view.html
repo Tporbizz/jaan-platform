@@ -66,6 +66,21 @@
             {% endfor %}
         </div>
 
+        <!-- Custom Item -->
+        <div class="bg-white rounded-xl border border-dashed border-cream-200 p-3 mb-4 flex gap-2 items-end">
+            <div class="flex-1">
+                <label class="text-xs font-semibold text-gray-400">เมนูพิเศษ (พิมพ์เอง)</label>
+                <input type="text" id="customName" placeholder="ชื่อเมนู" class="w-full border border-cream-200 rounded-lg px-3 py-2 text-sm mt-1">
+            </div>
+            <div class="w-24">
+                <label class="text-xs font-semibold text-gray-400">ราคา</label>
+                <input type="number" id="customPrice" placeholder="฿" class="w-full border border-cream-200 rounded-lg px-3 py-2 text-sm mt-1">
+            </div>
+            <button onclick="addCustomItem()" class="px-4 py-2 bg-jaan-400 text-white text-sm font-semibold rounded-lg hover:bg-jaan-500 transition whitespace-nowrap">
+                เพิ่ม
+            </button>
+        </div>
+
         <!-- Menu Grid -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="menu-grid">
             {% for cat_name, items in menu_by_cat.items %}
@@ -73,7 +88,10 @@
             <div class="menu-btn menu-item" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }})">
                 <div class="text-sm font-semibold text-gray-800">{{ mi.name }}</div>
                 {% if mi.name_en %}<div class="text-xs text-gray-400">{{ mi.name_en }}</div>{% endif %}
-                <div class="text-base font-bold text-jaan-600 mt-1">฿{{ mi.selling_price|floatformat:0 }}</div>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="text-base font-bold text-jaan-600">฿{{ mi.selling_price|floatformat:0 }}</span>
+                    {% if mi.prep_station == 'bar' %}<span class="text-[10px] font-bold text-purple-500">BAR</span>{% endif %}
+                </div>
             </div>
             {% endfor %}
             {% endfor %}
@@ -95,7 +113,14 @@
             {% for oi in order_items %}
             <div class="cart-item" data-item-id="{{ oi.id }}">
                 <div class="flex-1">
-                    <div class="text-sm font-medium text-gray-800">{{ oi.menu_item.name }}</div>
+                    <div class="text-sm font-medium text-gray-800">
+                        {{ oi.menu_item.name }}
+                        {% if oi.menu_item.prep_station == 'bar' %}
+                        <span class="status-badge bg-purple-100 text-purple-700 ml-1">BAR</span>
+                        {% else %}
+                        <span class="status-badge bg-orange-100 text-orange-700 ml-1">KIT</span>
+                        {% endif %}
+                    </div>
                     {% if oi.special_request %}
                     <div class="text-xs text-orange-500">{{ oi.special_request }}</div>
                     {% endif %}
@@ -120,7 +145,6 @@
             </div>
             {% empty %}
             <div class="text-center py-12 text-gray-300">
-                <div class="text-3xl mb-2">🍽️</div>
                 <div class="text-sm">ยังไม่มีรายการ</div>
             </div>
             {% endfor %}
@@ -139,13 +163,14 @@
 
             <div class="flex gap-2">
                 <button onclick="sendToKitchen()"
-                    class="flex-1 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition text-sm"
-                    id="btn-send">
-                    ส่งครัว 🔥
+                    class="flex-1 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    id="btn-send"
+                    {% if not has_pending %}disabled{% endif %}>
+                    {% if has_pending %}ส่งครัว{% else %}ส่งแล้ว — รอสั่งเพิ่ม{% endif %}
                 </button>
                 <a href="/pos/payment/{{ order.id }}/"
                     class="flex-1 py-3 bg-jaan-400 text-white font-semibold rounded-xl hover:bg-jaan-500 transition text-sm text-center">
-                    เก็บเงิน 💰
+                    เก็บเงิน
                 </a>
             </div>
         </div>
@@ -193,6 +218,23 @@ function voidItem(itemId) {
     });
 }
 
+function addCustomItem() {
+    const name = document.getElementById('customName').value.trim();
+    const price = parseFloat(document.getElementById('customPrice').value) || 0;
+    if (!name || price <= 0) { alert('ใส่ชื่อเมนูและราคา'); return; }
+
+    fetch(`/pos/order/${orderId}/add-custom/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ name, price, quantity: 1 }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) window.location.reload();
+        else alert(data.error || 'เกิดข้อผิดพลาด');
+    });
+}
+
 function sendToKitchen() {
     const btn = document.getElementById('btn-send');
     btn.disabled = true;
@@ -206,11 +248,18 @@ function sendToKitchen() {
     .then(r => r.json())
     .then(data => {
         if (data.ok) {
-            window.location.reload();
+            let msg = '';
+            if (data.kitchen_items > 0) msg += `ส่งครัว ${data.kitchen_items} รายการ`;
+            if (data.bar_items_ready > 0) {
+                if (msg) msg += ' · ';
+                msg += `บาร์ ${data.bar_items_ready} รายการ (ready)`;
+            }
+            btn.textContent = msg || 'ส่งแล้ว';
+            setTimeout(() => window.location.reload(), 1200);
         } else {
             alert(data.error || 'ไม่มีรายการที่รอส่งครัว');
             btn.disabled = false;
-            btn.textContent = 'ส่งครัว 🔥';
+            btn.textContent = 'ส่งครัว';
         }
     });
 }

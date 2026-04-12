@@ -23,16 +23,7 @@
 {% block content %}
 <div class="min-h-screen flex">
 
-    <!-- Sidebar -->
-    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
-        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
-            <span class="text-lg">🍽️</span>
-        </a>
-        <a href="/pos/" class="sidebar-icon" title="POS"><span class="text-sm">💳</span></a>
-        <div class="sidebar-icon active" title="Kitchen"><span class="text-white text-sm">👨‍🍳</span></div>
-        <div class="flex-1"></div>
-        <a href="/admin/" class="sidebar-icon" title="Settings"><span class="text-sm">⚙️</span></a>
-    </aside>
+    {% include 'includes/sidebar.html' with active='pos' %}
 
     <!-- Main -->
     <main class="flex-1 ml-[72px] p-6">
@@ -67,9 +58,12 @@
                          style="cursor: pointer;">
                         <span class="text-lg">{% if ti.is_done %}✅{% else %}⬜{% endif %}</span>
                         <div class="flex-1">
-                            <div class="text-sm font-semibold">{{ ti.order_item.menu_item.name }} x{{ ti.quantity }}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold">{{ ti.order_item.menu_item.name }} x{{ ti.quantity }}</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 font-bold">{{ ti.order_item.menu_item.prep_time_minutes }} นาที</span>
+                            </div>
                             {% if ti.special_request %}
-                            <div class="text-xs text-orange-600">⚠️ {{ ti.special_request }}</div>
+                            <div class="text-xs text-orange-600">{{ ti.special_request }}</div>
                             {% endif %}
                         </div>
                     </div>

@@ -8,7 +8,7 @@ class Employee(models.Model):
     class Position(models.TextChoices):
         CHEF = 'chef', 'เชฟ/พ่อครัว'
         SOUS_CHEF = 'sous_chef', 'ผู้ช่วยเชฟ'
-        COOK = 'cook', 'แม่ครัว/คนครั��'
+        COOK = 'cook', 'แม่ครัว/คนครัว'
         SERVER = 'server', 'พนักงานเสิร์ฟ'
         CASHIER = 'cashier', 'แคชเชียร์'
         MANAGER = 'manager', 'ผู้จัดการ'

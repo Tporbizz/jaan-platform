@@ -1,13 +1,14 @@
 import json
 from decimal import Decimal
 
-from django.db.models import Sum, Q
+from django.db.models import Sum, Count, Q, F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from restaurant.models import MenuItem
+from accounts.decorators import require_kitchen, require_pos
+from restaurant.models import KPITarget, MenuItem
 from .models import (
     KitchenTicket, KitchenTicketItem, MenuUpsellRule,
     Order, OrderItem, Table, Transaction,
@@ -15,12 +16,132 @@ from .models import (
 
 
 # =============================================================================
+# POS Dashboard — USP/STP, Sales Targets, Top Sellers
+# =============================================================================
+
+@require_pos
+def pos_dashboard(request):
+
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'pos/pos_dashboard.html', {'no_tenant': True})
+
+    today = timezone.now().date()
+
+    # --- Today's sales ---
+    today_orders = Order.objects.filter(tenant=tenant, status='paid', opened_at__date=today)
+    today_revenue = sum(o.total for o in today_orders)
+    today_count = today_orders.count()
+    today_covers = sum(o.guest_count for o in today_orders)
+    avg_check = today_revenue / today_covers if today_covers else 0
+
+    # --- Monthly sales ---
+    month_orders = Order.objects.filter(
+        tenant=tenant, status='paid',
+        opened_at__year=today.year, opened_at__month=today.month,
+    )
+    month_revenue = sum(o.total for o in month_orders)
+    month_count = month_orders.count()
+    month_covers = sum(o.guest_count for o in month_orders)
+
+    # --- KPI targets ---
+    kpi = KPITarget.objects.filter(tenant=tenant, month=today.month, year=today.year).first()
+    revenue_target = kpi.revenue_target if kpi else Decimal('0')
+    daily_target = revenue_target / 30 if revenue_target else Decimal('0')
+    target_pct = (today_revenue / daily_target * 100) if daily_target else 0
+
+    # --- Top sellers (this month) ---
+    top_sellers = OrderItem.objects.filter(
+        order__tenant=tenant, order__status='paid',
+        order__opened_at__year=today.year, order__opened_at__month=today.month,
+        is_voided=False,
+    ).values('menu_item__name', 'menu_item__selling_price').annotate(
+        total_qty=Sum('quantity'),
+        total_revenue=Sum(F('quantity') * F('unit_price')),
+    ).order_by('-total_qty')[:10]
+
+    # --- Customer segments (STP analysis) ---
+    segment_data = []
+    for order in month_orders:
+        if order.men_count == 1 and order.women_count == 1 and order.guest_count == 2:
+            segment_data.append('couple')
+        elif order.children_count > 0:
+            segment_data.append('family')
+        elif order.guest_count >= 4:
+            segment_data.append('group')
+        elif order.senior_count > 0:
+            segment_data.append('senior')
+        else:
+            segment_data.append('general')
+
+    segments = {}
+    for s in segment_data:
+        segments[s] = segments.get(s, 0) + 1
+
+    segment_labels = {
+        'couple': 'คู่รัก',
+        'family': 'ครอบครัว',
+        'group': 'กลุ่มเพื่อน (4+)',
+        'senior': 'ผู้สูงอายุ',
+        'general': 'ทั่วไป',
+    }
+    segment_list = [
+        {'key': k, 'label': segment_labels.get(k, k), 'count': v,
+         'pct': round(v / max(len(segment_data), 1) * 100)}
+        for k, v in sorted(segments.items(), key=lambda x: -x[1])
+    ]
+
+    # --- High margin menus (push recommendations) ---
+    high_margin = MenuItem.objects.filter(
+        tenant=tenant, is_available=True, recipe__isnull=False,
+    ).select_related('recipe')
+    push_menus = []
+    for m in high_margin:
+        fc = m.food_cost_pct
+        gp = m.gross_profit
+        if fc and gp and fc <= 35:
+            push_menus.append({
+                'name': m.name,
+                'price': m.selling_price,
+                'fc_pct': fc,
+                'gross_profit': gp,
+            })
+    push_menus.sort(key=lambda x: -x['gross_profit'])
+    push_menus = push_menus[:5]
+
+    # --- Active tables ---
+    tables = Table.objects.filter(tenant=tenant, is_active=True)
+    occupied = tables.filter(status='occupied').count()
+    total_tables = tables.count()
+
+    context = {
+        'today_revenue': today_revenue,
+        'today_count': today_count,
+        'today_covers': today_covers,
+        'avg_check': avg_check,
+        'month_revenue': month_revenue,
+        'month_count': month_count,
+        'month_covers': month_covers,
+        'revenue_target': revenue_target,
+        'daily_target': daily_target,
+        'target_pct': target_pct,
+        'top_sellers': top_sellers,
+        'segment_list': segment_list,
+        'push_menus': push_menus,
+        'occupied': occupied,
+        'total_tables': total_tables,
+        'today': today,
+        'kpi': kpi,
+    }
+    return render(request, 'pos/pos_dashboard.html', context)
+
+
+# =============================================================================
 # Table Map
 # =============================================================================
 
+@require_pos
 def table_map(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
 
     tenant = request.user.tenant
     if not tenant:
@@ -130,12 +251,15 @@ def order_view(request, order_id):
     # Upsell suggestions
     suggestions = get_upsell_suggestions(tenant, order)
 
+    has_pending = order_items.filter(status='pending').exists()
+
     context = {
         'order': order,
         'order_items': order_items,
         'menu_by_cat': menu_by_cat,
         'suggestions': suggestions,
         'categories': MenuItem.MenuCategory.choices,
+        'has_pending': has_pending,
     }
     return render(request, 'pos/order_view.html', context)
 
@@ -187,6 +311,57 @@ def add_item(request, order_id):
 
 
 @require_POST
+def add_custom_item(request, order_id):
+    """เพิ่มเมนูพิมพ์เอง (ไม่มีใน MenuItem) — สำหรับกรณีเร่งด่วน"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    tenant = request.user.tenant
+    order = get_object_or_404(Order, id=order_id, tenant=tenant)
+
+    data = json.loads(request.body)
+    name = data.get('name', '').strip()
+    price = Decimal(str(data.get('price', 0)))
+    quantity = int(data.get('quantity', 1))
+
+    if not name or price <= 0:
+        return JsonResponse({'error': 'ต้องใส่ชื่อและราคา'}, status=400)
+
+    # Find or create a "custom" MenuItem for this tenant
+    custom_item, _ = MenuItem.objects.get_or_create(
+        tenant=tenant,
+        name=name,
+        defaults={
+            'selling_price': price,
+            'menu_category': 'stir_fry',
+            'prep_station': 'kitchen',
+            'prep_time_minutes': 10,
+            'is_available': True,
+        },
+    )
+    # Update price if it differs (custom items may have varying prices)
+    if custom_item.selling_price != price:
+        custom_item.selling_price = price
+        custom_item.save(update_fields=['selling_price'])
+
+    OrderItem.objects.create(
+        order=order,
+        menu_item=custom_item,
+        quantity=quantity,
+        unit_price=price,
+        special_request='[เมนูพิเศษ]',
+    )
+
+    order.recalculate()
+
+    return JsonResponse({
+        'ok': True,
+        'subtotal': str(order.subtotal),
+        'total': str(order.total),
+    })
+
+
+@require_POST
 def void_item(request, order_id, item_id):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
@@ -217,32 +392,50 @@ def send_to_kitchen(request, order_id):
     order = get_object_or_404(Order, id=order_id, tenant=tenant)
 
     # Get pending items
-    pending_items = order.items.filter(status='pending', is_voided=False)
+    pending_items = order.items.filter(
+        status='pending', is_voided=False,
+    ).select_related('menu_item')
     if not pending_items.exists():
         return JsonResponse({'error': 'No pending items'}, status=400)
 
-    # Generate ticket number
-    daily_count = KitchenTicket.objects.filter(
-        tenant=tenant, created_at__date=timezone.now().date(),
-    ).count() + 1
-    ticket_number = f"KT-{timezone.now().strftime('%H%M')}-{daily_count:03d}"
-
-    ticket = KitchenTicket.objects.create(
-        tenant=tenant,
-        order=order,
-        table=order.table,
-        ticket_number=ticket_number,
-    )
-
+    # Split: kitchen items vs bar items (beverages skip kitchen)
+    kitchen_items = []
+    bar_items = []
     for item in pending_items:
-        KitchenTicketItem.objects.create(
-            ticket=ticket,
-            order_item=item,
-            quantity=item.quantity,
-            special_request=item.special_request,
-        )
-        item.status = 'sent'
+        if item.menu_item.prep_station == 'bar':
+            bar_items.append(item)
+        else:
+            kitchen_items.append(item)
+
+    # Bar items → mark ready immediately (FB ทำเอง)
+    for item in bar_items:
+        item.status = 'ready'
         item.save()
+
+    # Kitchen items → create KitchenTicket
+    ticket_number = None
+    if kitchen_items:
+        daily_count = KitchenTicket.objects.filter(
+            tenant=tenant, created_at__date=timezone.now().date(),
+        ).count() + 1
+        ticket_number = f"KT-{timezone.now().strftime('%H%M')}-{daily_count:03d}"
+
+        ticket = KitchenTicket.objects.create(
+            tenant=tenant,
+            order=order,
+            table=order.table,
+            ticket_number=ticket_number,
+        )
+
+        for item in kitchen_items:
+            KitchenTicketItem.objects.create(
+                ticket=ticket,
+                order_item=item,
+                quantity=item.quantity,
+                special_request=item.special_request,
+            )
+            item.status = 'sent'
+            item.save()
 
     order.status = 'sent'
     order.save()
@@ -250,7 +443,8 @@ def send_to_kitchen(request, order_id):
     return JsonResponse({
         'ok': True,
         'ticket_number': ticket_number,
-        'items_sent': pending_items.count(),
+        'kitchen_items': len(kitchen_items),
+        'bar_items_ready': len(bar_items),
     })
 
 
@@ -258,9 +452,8 @@ def send_to_kitchen(request, order_id):
 # Kitchen Display
 # =============================================================================
 
+@require_kitchen
 def kitchen_display(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
 
     tenant = request.user.tenant
     if not tenant:
@@ -515,6 +708,7 @@ def kitchen_data(request):
                 'qty': ti.quantity,
                 'special': ti.special_request,
                 'is_done': ti.is_done,
+                'prep_time': ti.order_item.menu_item.prep_time_minutes,
             } for ti in t.items.all()],
         } for t in tickets],
     })

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Supplier — Settings{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: none; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 1.5rem; padding: 1.5rem; width: 100%; max-width: 480px; }
+    .input { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #e8ddd0; border-radius: 0.75rem; font-size: 0.875rem; outline: none; }
+    .input:focus { border-color: #d4a574; }
+    .btn { padding: 0.5rem 1.25rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-primary:hover { background: #2d2d44; }
+    .btn-ghost { background: transparent; color: #666; }
+    .supplier-card { background: white; border-radius: 1.25rem; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 1rem; }
+    .supplier-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='' %}
+
+    <main class="flex-1 ml-[72px] p-8 max-w-[900px]">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <a href="{% url 'settings:hub' %}" class="text-gray-400 hover:text-gray-600 text-sm">Settings</a>
+                    <span class="text-gray-300">/</span>
+                    <span class="text-gray-800 font-semibold text-sm">Supplier</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Supplier ({{ suppliers|length }})</h1>
+            </div>
+            <button onclick="openModal()" class="btn btn-primary">+ เพิ่ม Supplier</button>
+        </div>
+
+        <div class="space-y-3">
+            {% for s in suppliers %}
+            <div class="supplier-card {% if not s.is_active %}opacity-40{% endif %}">
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600 flex-shrink-0">🏪</div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-gray-800">{{ s.name }}</div>
+                    <div class="text-xs text-gray-400">
+                        {% if s.contact_person %}{{ s.contact_person }} · {% endif %}
+                        {% if s.phone %}<a href="tel:{{ s.phone }}" class="text-blue-500">{{ s.phone }}</a>{% endif %}
+                        {% if s.line_id %} · Line: {{ s.line_id }}{% endif %}
+                    </div>
+                    {% if s.notes %}<div class="text-xs text-gray-300 mt-0.5">{{ s.notes|truncatechars:60 }}</div>{% endif %}
+                </div>
+                <button onclick="editSupplier({{ s.id }}, '{{ s.name|escapejs }}', '{{ s.contact_person|escapejs }}', '{{ s.phone|escapejs }}', '{{ s.line_id|escapejs }}', '{{ s.notes|escapejs }}')"
+                    class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-3 py-1">แก้ไข</button>
+            </div>
+            {% empty %}
+            <div class="card text-center py-12 text-gray-400">ยังไม่มี Supplier</div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">เพิ่ม Supplier</h2>
+        <form method="post" action="{% url 'settings:supplier_save' %}">
+            {% csrf_token %}
+            <input type="hidden" name="supplier_id" id="f-id" value="">
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">ชื่อร้านค้า *</label>
+                    <input type="text" name="name" id="f-name" class="input" required>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">ผู้ติดต่อ</label>
+                        <input type="text" name="contact_person" id="f-contact" class="input">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 mb-1 block">เบอร์โทร</label>
+                        <input type="tel" name="phone" id="f-phone" class="input">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">Line ID</label>
+                    <input type="text" name="line_id" id="f-line" class="input">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 mb-1 block">หมายเหตุ</label>
+                    <textarea name="notes" id="f-notes" class="input" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึก</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('modal-title').textContent = 'เพิ่ม Supplier';
+    document.getElementById('f-id').value = '';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-contact').value = '';
+    document.getElementById('f-phone').value = '';
+    document.getElementById('f-line').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('modal').classList.add('open');
+}
+function editSupplier(id, name, contact, phone, line, notes) {
+    document.getElementById('modal-title').textContent = 'แก้ไข: ' + name;
+    document.getElementById('f-id').value = id;
+    document.getElementById('f-name').value = name;
+    document.getElementById('f-contact').value = contact;
+    document.getElementById('f-phone').value = phone;
+    document.getElementById('f-line').value = line;
+    document.getElementById('f-notes').value = notes;
+    document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+</script>
+{% endblock %}
