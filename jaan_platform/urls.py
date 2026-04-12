@@ -2,9 +2,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import authenticate, login, logout
+from django.db import models
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import include, path
+from django.utils import timezone
 
 
 def health_check(request):
@@ -18,7 +20,54 @@ def landing(request):
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'dashboard.html')
+
+    tenant = request.user.tenant
+    today = timezone.now().date()
+
+    # Today's revenue from POS
+    from pos.models import Order
+    today_orders = Order.objects.filter(tenant=tenant, status='paid', opened_at__date=today)
+    today_revenue = sum(o.total for o in today_orders)
+    today_order_count = today_orders.count()
+    today_covers = sum(o.guest_count for o in today_orders)
+
+    # Monthly P&L
+    from reports.models import MonthlyPL
+    pl = MonthlyPL.objects.filter(tenant=tenant, month=today.month, year=today.year).first()
+
+    # Expiry alerts
+    from restaurant.models import LotBatch
+    expiring = LotBatch.objects.filter(
+        tenant=tenant, expiry_date__lte=today + timezone.timedelta(days=3),
+        quantity__gt=0,
+    ).select_related('item')[:5]
+
+    # Low stock
+    from restaurant.models import Item
+    low_stock = Item.objects.filter(tenant=tenant, current_stock__lt=models.F('min_stock'))[:5]
+
+    # Today's shifts
+    from hr.models import ShiftSchedule
+    today_shifts = ShiftSchedule.objects.filter(
+        employee__tenant=tenant, date=today,
+    ).select_related('employee')[:8]
+
+    # Active events
+    from events.models import EventSession
+    active_events = EventSession.objects.filter(tenant=tenant, status='active')
+
+    context = {
+        'today_revenue': today_revenue,
+        'today_order_count': today_order_count,
+        'today_covers': today_covers,
+        'pl': pl,
+        'expiring': expiring,
+        'low_stock': low_stock,
+        'today_shifts': today_shifts,
+        'active_events': active_events,
+        'today': today,
+    }
+    return render(request, 'dashboard.html', context)
 
 
 def login_view(request):

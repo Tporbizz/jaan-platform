@@ -3,355 +3,182 @@
 
 {% block extra_head %}
 <style>
-    .progress-ring { transform: rotate(-90deg); }
     .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
     .card-warm { background: linear-gradient(135deg, #e8ddd3 0%, #d4c5b5 100%); border-radius: 1.25rem; padding: 1.5rem; }
-    .blob-yellow { width: 180px; height: 180px; background: radial-gradient(circle, #f5d76e 0%, #f5c54200 70%); border-radius: 50%; position: absolute; filter: blur(20px); }
-    .blob-red { width: 120px; height: 120px; background: radial-gradient(circle, #e8837060 0%, #e8837000 70%); border-radius: 50%; position: absolute; filter: blur(15px); }
     .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
     .sidebar-icon:hover { background: #f0e0cc; }
     .sidebar-icon.active { background: #1a1a2e; }
-    .habit-bar { width: 8px; height: 18px; border-radius: 2px; display: inline-block; margin-right: 2px; }
+    .kpi-ok { color: #16a34a; }
+    .kpi-warn { color: #ea580c; }
+    .kpi-critical { color: #dc2626; }
+    .progress-ring { transform: rotate(-90deg); }
+    .shift-m { background: #fef9c3; color: #a16207; }
+    .shift-e { background: #dbeafe; color: #1d4ed8; }
+    .shift-s { background: #f3e8ff; color: #7c3aed; }
+    .shift-f { background: #e5e7eb; color: #374151; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="min-h-screen flex">
 
-    <!-- Sidebar (icon-only) -->
-    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
-        <!-- Logo -->
-        <div class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4">
-            <span class="text-lg">🍽️</span>
-        </div>
+    {% include 'includes/sidebar.html' with active='dashboard' %}
 
-        <div class="sidebar-icon active" title="Dashboard">
-            <span class="text-white text-sm">📊</span>
-        </div>
-        <div class="sidebar-icon" title="POS">
-            <span class="text-sm">💳</span>
-        </div>
-        <div class="sidebar-icon" title="Stock">
-            <span class="text-sm">📦</span>
-        </div>
-        <div class="sidebar-icon" title="Procurement">
-            <span class="text-sm">🛒</span>
-        </div>
-        <div class="sidebar-icon" title="Food Cost">
-            <span class="text-sm">🍽️</span>
-        </div>
-
-        <div class="flex-1"></div>
-
-        <div class="sidebar-icon" title="Events">
-            <span class="text-sm">🎪</span>
-        </div>
-        <a href="/admin/" class="sidebar-icon" title="Settings">
-            <span class="text-sm">⚙️</span>
-        </a>
-
-        <!-- User Avatar -->
-        <div class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-sm font-bold">
-            A
-        </div>
-    </aside>
-
-    <!-- Main Content -->
     <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
 
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">สวัสดี, Admin!</h1>
-                <p class="text-gray-400 mt-1">มาดูภาพรวมร้านสารข้าววันนี้กัน</p>
+                <h1 class="text-3xl font-bold text-gray-900">สวัสดี, {{ user.first_name }}!</h1>
+                <p class="text-gray-400 mt-1">สารข้าว Restaurant — {{ today|date:"d/m/Y" }}</p>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="flex items-center bg-white rounded-xl px-4 py-2.5 shadow-sm gap-2 w-64">
-                    <span class="text-gray-400 text-sm">🔍</span>
-                    <span class="text-gray-400 text-sm">ค้นหา...</span>
-                </div>
-                <button class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
-                    Upgrade
-                </button>
+            <div class="flex gap-2">
+                <a href="/pos/" class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">เปิด POS</a>
+                <a href="/pos/kitchen/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">Kitchen</a>
             </div>
         </div>
 
-        <!-- Top Row: Revenue Blob + Calendar -->
-        <div class="grid grid-cols-5 gap-5 mb-5">
-
-            <!-- Revenue Card (3 cols) -->
-            <div class="col-span-3 card-warm relative overflow-hidden min-h-[280px]">
-                <h2 class="text-lg font-bold text-gray-800 leading-tight">ยอดขายวันนี้<br><span class="text-sm font-normal text-gray-600">Today's Revenue Summary</span></h2>
-
-                <!-- Decorative blobs -->
-                <div class="blob-yellow" style="top: 40px; right: 80px;"></div>
-                <div class="blob-red" style="bottom: 30px; left: 160px;"></div>
-
-                <!-- Stats bubbles -->
-                <div class="absolute top-16 left-[45%] w-[100px] h-[100px] bg-gray-800 rounded-full flex flex-col items-center justify-center z-10">
-                    <span class="text-white text-xl font-bold">฿0</span>
-                    <span class="text-gray-300 text-[10px]">Revenue</span>
+        <!-- Row 1: Revenue KPIs -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="card-dark">
+                <div class="text-xs opacity-60">ยอดวันนี้</div>
+                <div class="text-3xl font-extrabold mt-1">฿{{ today_revenue|floatformat:0 }}</div>
+                <div class="text-xs opacity-40 mt-1">{{ today_order_count }} ออเดอร์ · {{ today_covers }} คน</div>
+            </div>
+            {% if pl %}
+            <div class="card">
+                <div class="text-xs text-gray-400">ยอดเดือนนี้</div>
+                <div class="text-2xl font-extrabold mt-1">฿{{ pl.total_revenue|floatformat:0 }}</div>
+                <div class="text-xs text-gray-400 mt-1">Net: <span class="font-bold {% if pl.net_profit > 0 %}text-green-600{% else %}text-red-600{% endif %}">฿{{ pl.net_profit|floatformat:0 }}</span></div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400">Food Cost %</div>
+                <div class="text-3xl font-extrabold mt-1 {% if pl.food_cost_pct <= 33 %}kpi-ok{% elif pl.food_cost_pct <= 37 %}kpi-warn{% else %}kpi-critical{% endif %}">
+                    {{ pl.food_cost_pct|floatformat:1 }}%
                 </div>
-                <div class="absolute top-[110px] right-[30%] w-[80px] h-[80px] bg-white/60 backdrop-blur-sm rounded-full flex flex-col items-center justify-center z-10">
-                    <span class="text-gray-800 text-lg font-bold">0</span>
-                    <span class="text-gray-500 text-[10px]">Orders</span>
+                <div class="text-xs text-gray-400 mt-1">เป้า ≤33%</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400">Prime Cost %</div>
+                <div class="text-3xl font-extrabold mt-1 {% if pl.prime_cost_pct <= 63 %}kpi-ok{% elif pl.prime_cost_pct <= 68 %}kpi-warn{% else %}kpi-critical{% endif %}">
+                    {{ pl.prime_cost_pct|floatformat:1 }}%
                 </div>
-                <div class="absolute bottom-8 left-[30%] w-[75px] h-[75px] bg-white/60 backdrop-blur-sm rounded-full flex flex-col items-center justify-center z-10">
-                    <span class="text-gray-800 text-lg font-bold">0</span>
-                    <span class="text-gray-500 text-[10px]">Covers</span>
-                </div>
+                <div class="text-xs text-gray-400 mt-1">เป้า ≤63%</div>
+            </div>
+            {% else %}
+            <div class="card col-span-3">
+                <div class="text-center py-4 text-gray-400 text-sm">ยังไม่มีข้อมูล P&L เดือนนี้ — <a href="/reports/pl/" class="text-blue-600 font-semibold">ดู P&L</a></div>
+            </div>
+            {% endif %}
+        </div>
 
-                <!-- Legend -->
-                <div class="absolute bottom-6 left-6 flex flex-col gap-1.5 z-10">
-                    <div class="flex items-center gap-2">
-                        <div class="w-5 h-2 bg-jaan-400 rounded-full"></div>
-                        <span class="text-xs text-gray-600">Dine-in</span>
+        <!-- Row 2: Alerts + Shifts -->
+        <div class="grid grid-cols-3 gap-6 mb-6">
+
+            <!-- Expiry Alerts -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-800">Expiry Alerts</h3>
+                    <a href="/stock/" class="text-xs text-blue-600 font-semibold">ดูทั้งหมด</a>
+                </div>
+                {% if expiring %}
+                <div class="space-y-2">
+                    {% for lot in expiring %}
+                    <div class="flex items-center justify-between bg-red-50 rounded-xl px-3 py-2">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-800">{{ lot.item.name }}</div>
+                            <div class="text-xs text-red-500">หมดอายุ {{ lot.expiry_date|date:"d/m" }}</div>
+                        </div>
+                        <div class="text-sm font-bold">{{ lot.quantity }} {{ lot.item.unit.abbreviation }}</div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-5 h-2 bg-red-300 rounded-full"></div>
-                        <span class="text-xs text-gray-600">Event</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-5 h-2 bg-gray-700 rounded-full"></div>
-                        <span class="text-xs text-gray-600">Room Charge</span>
-                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-4">ไม่มีวัตถุดิบใกล้หมดอายุ</p>
+                {% endif %}
             </div>
 
-            <!-- Calendar Card (2 cols) -->
-            <div class="col-span-2 card-dark">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold">เดือนนี้</h3>
-                    <span class="text-sm text-gray-400">April ▾</span>
+            <!-- Low Stock -->
+            <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-800">Low Stock</h3>
+                    <a href="/procurement/reorder/" class="text-xs text-blue-600 font-semibold">สั่งซื้อ</a>
                 </div>
-                <div class="grid grid-cols-7 gap-1 text-center text-xs">
-                    <span class="text-gray-500 py-1">จ</span>
-                    <span class="text-gray-500 py-1">อ</span>
-                    <span class="text-gray-500 py-1">พ</span>
-                    <span class="text-gray-500 py-1">พฤ</span>
-                    <span class="text-gray-500 py-1">ศ</span>
-                    <span class="text-gray-500 py-1">ส</span>
-                    <span class="text-gray-500 py-1">อา</span>
-
-                    <span class="py-1.5"></span>
-                    <span class="py-1.5 text-gray-300">1</span>
-                    <span class="py-1.5 text-gray-300">2</span>
-                    <span class="py-1.5 text-gray-300">3</span>
-                    <span class="py-1.5 text-gray-300">4</span>
-                    <span class="py-1.5 text-gray-300">5</span>
-                    <span class="py-1.5 text-gray-300">6</span>
-
-                    <span class="py-1.5 text-gray-300">7</span>
-                    <span class="py-1.5 text-gray-300">8</span>
-                    <span class="py-1.5 text-gray-300">9</span>
-                    <span class="py-1.5 text-gray-300">10</span>
-                    <span class="py-1.5 w-7 h-7 bg-jaan-400 rounded-full text-gray-900 font-bold mx-auto flex items-center justify-center">11</span>
-                    <span class="py-1.5 text-gray-300">12</span>
-                    <span class="py-1.5 text-gray-300">13</span>
-
-                    <span class="py-1.5 text-gray-300">14</span>
-                    <span class="py-1.5 text-gray-300">15</span>
-                    <span class="py-1.5 text-gray-300">16</span>
-                    <span class="py-1.5 text-gray-300">17</span>
-                    <span class="py-1.5 text-gray-300">18</span>
-                    <span class="py-1.5 text-gray-300">19</span>
-                    <span class="py-1.5 text-gray-300">20</span>
-
-                    <span class="py-1.5 text-gray-300">21</span>
-                    <span class="py-1.5 text-gray-300">22</span>
-                    <span class="py-1.5 text-gray-300">23</span>
-                    <span class="py-1.5 text-gray-300">24</span>
-                    <span class="py-1.5 text-gray-300">25</span>
-                    <span class="py-1.5 text-gray-300">26</span>
-                    <span class="py-1.5 text-gray-300">27</span>
-
-                    <span class="py-1.5 text-gray-300">28</span>
-                    <span class="py-1.5 text-gray-300">29</span>
-                    <span class="py-1.5 text-gray-300">30</span>
+                {% if low_stock %}
+                <div class="space-y-2">
+                    {% for item in low_stock %}
+                    <div class="flex items-center justify-between bg-orange-50 rounded-xl px-3 py-2">
+                        <div class="text-sm font-semibold text-gray-800">{{ item.name }}</div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold text-orange-600">{{ item.current_stock|floatformat:0 }}</div>
+                            <div class="text-xs text-gray-400">min {{ item.min_stock|floatformat:0 }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
-                <div class="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
-                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full border border-gray-500"></div> วันนี้</div>
-                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-green-500"></div> มี Event</div>
-                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-jaan-400"></div> วันหยุด</div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-4">สต๊อกปกติทั้งหมด</p>
+                {% endif %}
+            </div>
+
+            <!-- Today's Shift -->
+            <div class="card-dark">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold">กะวันนี้</h3>
+                    <a href="/hr/" class="text-xs text-gray-400 hover:text-white">ดูทั้งหมด</a>
                 </div>
+                {% if today_shifts %}
+                <div class="space-y-2">
+                    {% for shift in today_shifts %}
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm">{{ shift.employee.name }}</span>
+                            <span class="text-xs opacity-50 ml-1">{{ shift.employee.get_position_display }}</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded-lg
+                            {% if shift.shift_type == 'morning' %}shift-m
+                            {% elif shift.shift_type == 'evening' %}shift-e
+                            {% elif shift.shift_type == 'split' %}shift-s
+                            {% else %}shift-f{% endif %}">
+                            {{ shift.get_shift_type_display }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-4">ยังไม่มีกะวันนี้</p>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Middle Row: Food Cost Ring + KPI Habits -->
-        <div class="grid grid-cols-5 gap-5 mb-5">
-
-            <!-- Food Cost Ring (2 cols) -->
-            <div class="col-span-2 card">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h3 class="font-bold text-gray-800">Food Cost</h3>
-                        <p class="text-xs text-gray-400 mt-0.5">เป้า: ≤ 33% ของยอดขาย</p>
-                    </div>
-                    <span class="text-xs text-gray-400">เดือนนี้</span>
-                </div>
-
-                <div class="flex items-center justify-center my-6">
-                    <div class="relative">
-                        <svg width="140" height="140" class="progress-ring">
-                            <circle cx="70" cy="70" r="60" fill="none" stroke="#f0e0cc" stroke-width="10"/>
-                            <circle cx="70" cy="70" r="60" fill="none" stroke="#e8553760" stroke-width="10"
-                                stroke-dasharray="377" stroke-dashoffset="245" stroke-linecap="round"/>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span class="text-xs text-gray-400">Target</span>
-                            <span class="text-3xl font-extrabold text-gray-800">33%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-center">
-                    <span class="text-xs text-gray-500">รอข้อมูลจาก Phase 5</span>
-                </div>
-            </div>
-
-            <!-- KPI Cards (3 cols) -->
-            <div class="col-span-3 card">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold text-gray-800">KPI Targets</h3>
-                    <span class="text-xs bg-cream-100 text-gray-500 px-2 py-1 rounded-lg">สารข้าว</span>
-                </div>
-
-                <div class="space-y-3">
-                    <!-- KPI Row -->
-                    <div class="flex items-center bg-cream-50 rounded-xl px-4 py-3">
-                        <div class="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center mr-3">
-                            <span class="text-sm">🥗</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-sm text-gray-800">Food Cost %</div>
-                            <div class="text-xs text-gray-400">Target: ≤ 33%</div>
-                        </div>
-                        <div class="flex gap-0.5">
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                        </div>
-                        <span class="ml-3 text-xs text-gray-400">—</span>
-                    </div>
-
-                    <div class="flex items-center bg-cream-50 rounded-xl px-4 py-3">
-                        <div class="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
-                            <span class="text-sm">👥</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-sm text-gray-800">Labour Cost %</div>
-                            <div class="text-xs text-gray-400">Target: ≤ 30%</div>
-                        </div>
-                        <div class="flex gap-0.5">
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                        </div>
-                        <span class="ml-3 text-xs text-gray-400">—</span>
-                    </div>
-
-                    <div class="flex items-center bg-cream-50 rounded-xl px-4 py-3">
-                        <div class="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center mr-3">
-                            <span class="text-sm">📊</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-sm text-gray-800">Prime Cost %</div>
-                            <div class="text-xs text-gray-400">Target: ≤ 63%</div>
-                        </div>
-                        <div class="flex gap-0.5">
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                        </div>
-                        <span class="ml-3 text-xs text-gray-400">—</span>
-                    </div>
-
-                    <div class="flex items-center bg-cream-50 rounded-xl px-4 py-3">
-                        <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center mr-3">
-                            <span class="text-sm">🗑️</span>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-sm text-gray-800">Waste %</div>
-                            <div class="text-xs text-gray-400">Target: ≤ 2%</div>
-                        </div>
-                        <div class="flex gap-0.5">
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                            <div class="habit-bar bg-gray-200"></div>
-                        </div>
-                        <span class="ml-3 text-xs text-gray-400">—</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Row: Stock Alerts + Dev Progress -->
-        <div class="grid grid-cols-5 gap-5">
-
-            <!-- Stock Alert (2 cols) -->
-            <div class="col-span-2 card">
-                <h3 class="font-bold text-gray-800 mb-1">Stock Alerts</h3>
-                <p class="text-xs text-gray-400 mb-4">วัตถุดิบที่ต้องสั่งซื้อ</p>
-
-                <div class="flex items-center justify-center py-8">
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-cream-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                            <span class="text-2xl">📦</span>
-                        </div>
-                        <p class="text-sm text-gray-400">รอข้อมูลจาก Phase 1</p>
-                        <p class="text-xs text-gray-300 mt-1">Stock & Inventory</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Development Progress (3 cols) -->
-            <div class="col-span-3 card">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold text-gray-800">Development Progress</h3>
-                    <div class="flex items-center gap-1">
-                        <span class="text-xs font-bold text-jaan-600">2/9</span>
-                        <span class="text-xs text-gray-400">Phases</span>
-                    </div>
-                </div>
-
-                <div class="space-y-2.5">
-                    <div class="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-2.5">
-                        <div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-                        <span class="text-sm text-gray-700 flex-1">Phase 0 — Project Setup & Auth</span>
-                        <span class="text-xs text-green-600 font-semibold">Done ✓</span>
-                    </div>
-                    <div class="flex items-center gap-3 bg-jaan-400/10 rounded-xl px-4 py-2.5">
-                        <div class="w-2.5 h-2.5 bg-jaan-400 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-700 flex-1 font-medium">Phase 1 — Stock & Inventory</span>
-                        <span class="text-xs text-jaan-600 font-semibold">Next →</span>
-                    </div>
-                    <div class="flex items-center gap-3 px-4 py-2.5">
-                        <div class="w-2.5 h-2.5 bg-gray-200 rounded-full"></div>
-                        <span class="text-sm text-gray-400 flex-1">Phase 2 — Procurement</span>
-                    </div>
-                    <div class="flex items-center gap-3 px-4 py-2.5">
-                        <div class="w-2.5 h-2.5 bg-gray-200 rounded-full"></div>
-                        <span class="text-sm text-gray-400 flex-1">Phase 3 — POS Module</span>
-                    </div>
-                    <div class="flex items-center gap-3 px-4 py-2.5">
-                        <div class="w-2.5 h-2.5 bg-gray-200 rounded-full"></div>
-                        <span class="text-sm text-gray-400 flex-1">Phase 4–9 — Events, Food Cost, Hotel, HR, IoT, SaaS</span>
-                    </div>
-                </div>
-            </div>
+        <!-- Row 3: Quick Links -->
+        <div class="grid grid-cols-6 gap-3">
+            <a href="/pos/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">💳</div>
+                <div class="text-xs font-semibold text-gray-700">POS</div>
+            </a>
+            <a href="/stock/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">📦</div>
+                <div class="text-xs font-semibold text-gray-700">Stock</div>
+            </a>
+            <a href="/procurement/reorder/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">🛒</div>
+                <div class="text-xs font-semibold text-gray-700">สั่งซื้อ</div>
+            </a>
+            <a href="/reports/pl/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">📈</div>
+                <div class="text-xs font-semibold text-gray-700">P&L</div>
+            </a>
+            <a href="/events/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">🎪</div>
+                <div class="text-xs font-semibold text-gray-700">Events</div>
+                {% if active_events %}<span class="text-xs text-orange-500 font-bold">{{ active_events.count }} active</span>{% endif %}
+            </a>
+            <a href="/hotel/" class="card text-center hover:shadow-md transition">
+                <div class="text-2xl mb-1">🏨</div>
+                <div class="text-xs font-semibold text-gray-700">Hotel</div>
+            </a>
         </div>
 
     </main>
