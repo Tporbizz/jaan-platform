@@ -28,25 +28,27 @@ class Command(BaseCommand):
         password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'jaan2024!')
         email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@sarakhao.com')
 
-        if not User.objects.filter(username=username).exists():
-            user = User.objects.create_superuser(
-                username=username,
-                email=email,
-                password=password,
-                tenant=tenant,
-                department='gm',
-                role='owner',
-            )
-            self.stdout.write(self.style.SUCCESS(
-                f'Created superuser: {username} (password: {password})'
-            ))
-        else:
-            # Update existing user's tenant if needed
-            user = User.objects.get(username=username)
-            if not user.tenant:
-                user.tenant = tenant
-                user.save()
-            self.stdout.write(f'Superuser already exists: {username}')
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={
+                'email': email,
+                'is_superuser': True,
+                'is_staff': True,
+                'tenant': tenant,
+                'department': 'gm',
+                'role': 'owner',
+            }
+        )
+        # Always reset password and ensure tenant
+        user.set_password(password)
+        user.tenant = tenant
+        user.is_superuser = True
+        user.is_staff = True
+        user.save()
+        status = 'Created' if created else 'Reset password for'
+        self.stdout.write(self.style.SUCCESS(
+            f'{status} superuser: {username} / {password}'
+        ))
 
         # --- Import Real Menu ---
         from restaurant.models import MenuItem
