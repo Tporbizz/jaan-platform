@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ session.name }} — Jaan Events{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <a href="/events/" class="text-sm text-gray-400 hover:text-gray-600">← Events</a>
+            <h1 class="text-3xl font-bold mt-1">{{ session.name }}</h1>
+            <p class="text-gray-400">{{ session.date|date:"d/m/Y" }} · {{ session.location|default:"—" }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if session.status == 'draft' %}
+            <button onclick="toggleEvent()" class="px-5 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl">เปิดขาย</button>
+            {% elif session.status == 'active' %}
+            <div class="text-sm text-gray-500">QR: <code class="bg-cream-100 px-2 py-1 rounded">/events/qr/{{ session.session_token }}/</code></div>
+            <button onclick="toggleEvent()" class="px-5 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl">ปิด Event</button>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl text-sm font-semibold">ปิดแล้ว</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="card-dark">
+            <div class="text-xs opacity-60">Revenue</div>
+            <div class="text-3xl font-extrabold mt-1">฿{{ total_revenue|floatformat:0 }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">Orders</div>
+            <div class="text-3xl font-extrabold mt-1">{{ total_orders }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">Avg Order</div>
+            <div class="text-3xl font-extrabold mt-1">฿{{ avg_order|floatformat:0 }}</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-5 gap-5">
+        <!-- Top Items -->
+        <div class="col-span-2 card">
+            <h3 class="font-bold text-gray-800 mb-3">Top Selling</h3>
+            {% for item in top_items %}
+            <div class="flex justify-between py-2 border-b border-cream-100 text-sm">
+                <span>{{ item.menu_item_name }}</span>
+                <span class="font-semibold">{{ item.total_qty }} ชิ้น · ฿{{ item.total_rev|floatformat:0 }}</span>
+            </div>
+            {% empty %}
+            <p class="text-gray-400 text-sm">ยังไม่มีข้อมูล</p>
+            {% endfor %}
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="col-span-3 card">
+            <h3 class="font-bold text-gray-800 mb-3">Orders ล่าสุด</h3>
+            <div class="space-y-2 max-h-[400px] overflow-y-auto">
+                {% for o in orders %}
+                <div class="flex items-center justify-between py-2 border-b border-cream-100 text-sm">
+                    <div>
+                        <span class="font-medium">{{ o.order_number }}</span>
+                        <span class="text-xs text-gray-400 ml-2">{{ o.created_at|timesince }} ago</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold">฿{{ o.total|floatformat:0 }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded font-medium {% if o.status == 'paid' %}bg-green-100 text-green-700{% else %}bg-yellow-100 text-yellow-700{% endif %}">{{ o.get_status_display }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function toggleEvent() {
+    fetch('/events/{{ session.id }}/toggle/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    }).then(() => window.location.reload());
+}
+{% if session.status == 'active' %}
+setInterval(() => window.location.reload(), 10000);
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}กะวันนี้ — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .shift-m { background: #fef9c3; color: #a16207; }
+    .shift-e { background: #dbeafe; color: #1d4ed8; }
+    .shift-s { background: #f3e8ff; color: #7c3aed; }
+    .shift-f { background: #e5e7eb; color: #374151; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="min-h-screen flex">
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4"><span class="text-lg">🍽️</span></a>
+        <a href="/dashboard/" class="sidebar-icon"><span class="text-sm">📊</span></a>
+        <a href="/pos/" class="sidebar-icon"><span class="text-sm">💳</span></a>
+        <a href="/stock/" class="sidebar-icon"><span class="text-sm">📦</span></a>
+        <div class="sidebar-icon active"><span class="text-white text-sm">👥</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon"><span class="text-sm">⚙️</span></a>
+    </aside>
+    <main class="flex-1 ml-[72px] p-8 max-w-[1000px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">กะวันนี้</h1>
+                <p class="text-gray-400 mt-1">{{ today|date:"d/m/Y" }} — พนักงาน {{ employee_count }} คน</p>
+            </div>
+            <a href="/hr/shifts/" class="px-4 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">ตารางกะสัปดาห์</a>
+        </div>
+
+        <!-- กะวันนี้ -->
+        {% if today_shifts %}
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            {% for shift in today_shifts %}
+            <div class="card flex items-center justify-between">
+                <div>
+                    <div class="font-bold text-lg">{{ shift.employee.name }}</div>
+                    <div class="text-sm text-gray-400">{{ shift.employee.get_position_display }}</div>
+                </div>
+                <span class="text-sm font-bold px-3 py-1.5 rounded-lg
+                    {% if shift.shift_type == 'morning' %}shift-m
+                    {% elif shift.shift_type == 'evening' %}shift-e
+                    {% elif shift.shift_type == 'split' %}shift-s
+                    {% else %}shift-f{% endif %}">
+                    {{ shift.get_shift_type_display }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card mb-6">
+            <p class="text-gray-400 text-center py-6">ยังไม่มีกะวันนี้ — <a href="/hr/shifts/" class="text-blue-600 font-semibold">กำหนดกะ</a></p>
+        </div>
+        {% endif %}
+
+        <!-- แยกตาม zone -->
+        <div class="grid grid-cols-2 gap-6">
+            <div class="card-dark">
+                <h3 class="text-sm opacity-60 mb-3">ครัว (Kitchen)</h3>
+                {% for shift in today_shifts %}
+                    {% if shift.employee.position == 'chef' or shift.employee.position == 'sous_chef' or shift.employee.position == 'cook' %}
+                    <div class="flex justify-between items-center py-1.5">
+                        <span>{{ shift.employee.name }}</span>
+                        <span class="text-xs opacity-60">{{ shift.employee.get_position_display }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="card">
+                <h3 class="text-sm text-gray-400 mb-3">หน้าร้าน (Front)</h3>
+                {% for shift in today_shifts %}
+                    {% if shift.employee.position == 'server' or shift.employee.position == 'cashier' or shift.employee.position == 'manager' %}
+                    <div class="flex justify-between items-center py-1.5">
+                        <span class="font-semibold">{{ shift.employee.name }}</span>
+                        <span class="text-xs text-gray-400">{{ shift.employee.get_position_display }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

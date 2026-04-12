@@ -51,10 +51,10 @@ urlpatterns = [
     path('stock/', include('restaurant.urls', namespace='restaurant')),
     path('procurement/', include(('restaurant.procurement_urls', 'procurement'), namespace='procurement')),
     path('pos/', include('pos.urls', namespace='pos')),
-    path('api/events/', include('events.urls', namespace='events')),
-    path('api/hr/', include('hr.urls', namespace='hr')),
-    path('api/hotel/', include('hotel_integration.urls', namespace='hotel_integration')),
-    path('api/reports/', include('reports.urls', namespace='reports')),
+    path('events/', include('events.urls', namespace='events')),
+    path('hr/', include('hr.urls', namespace='hr')),
+    path('hotel/', include('hotel_integration.urls', namespace='hotel_integration')),
+    path('reports/', include('reports.urls', namespace='reports')),
     path('api/accounts/', include('accounts.urls', namespace='accounts')),
 ]
 

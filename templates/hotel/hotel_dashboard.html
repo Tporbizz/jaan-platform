@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Hotel Integration — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="min-h-screen flex">
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4"><span class="text-lg">🍽️</span></a>
+        <a href="/dashboard/" class="sidebar-icon"><span class="text-sm">📊</span></a>
+        <a href="/pos/" class="sidebar-icon"><span class="text-sm">💳</span></a>
+        <a href="/stock/" class="sidebar-icon"><span class="text-sm">📦</span></a>
+        <div class="sidebar-icon active"><span class="text-white text-sm">🏨</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon"><span class="text-sm">⚙️</span></a>
+    </aside>
+    <main class="flex-1 ml-[72px] p-8 max-w-[1200px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Hotel Integration</h1>
+                <p class="text-gray-400 mt-1">Parima Hotel — Guest & Room Charge</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/hotel/bf-settlement/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">BF Settlement</a>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="card-dark">
+                <div class="text-xs opacity-60">แขกปัจจุบัน</div>
+                <div class="text-3xl font-extrabold mt-1">{{ guest_count }}</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400">Pending Charges</div>
+                <div class="text-3xl font-extrabold mt-1">{{ pending_count }}</div>
+            </div>
+            <div class="card">
+                <div class="text-xs text-gray-400">PMS</div>
+                <div class="text-xl font-bold mt-1">{% if config %}{{ config.pms_type }} · {{ config.sync_method }}{% else %}ยังไม่ตั้งค่า{% endif %}</div>
+            </div>
+        </div>
+
+        <!-- Import CSV -->
+        <div class="card mb-6">
+            <h3 class="font-bold text-gray-800 mb-3">Import Guest List (CSV)</h3>
+            <form method="post" action="/hotel/import-csv/" enctype="multipart/form-data" class="flex items-center gap-4">
+                {% csrf_token %}
+                <input type="file" name="csv_file" accept=".csv" class="text-sm">
+                <button type="submit" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl">Upload</button>
+            </form>
+            <p class="text-xs text-gray-400 mt-2">คอลัมน์: room, guest_name, checkout, package (BB/HB/FB/RO)</p>
+        </div>
+
+        <!-- Room Lookup -->
+        <div class="card mb-6">
+            <h3 class="font-bold text-gray-800 mb-3">Room Lookup</h3>
+            <div class="flex gap-3">
+                <input type="text" id="room-input" placeholder="เลขห้อง..." class="border border-cream-200 rounded-xl px-4 py-2 text-sm w-32">
+                <button onclick="lookupRoom()" class="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl">ค้นหา</button>
+            </div>
+            <div id="room-result" class="mt-3 hidden">
+                <div class="bg-cream-50 rounded-xl p-4 text-sm">
+                    <div class="font-bold text-lg" id="r-name"></div>
+                    <div class="text-gray-500 mt-1">ห้อง <span id="r-room"></span> · Checkout <span id="r-checkout"></span></div>
+                    <div class="text-gray-500">Package: <span id="r-package"></span> · BF: <span id="r-bf"></span></div>
+                </div>
+            </div>
+            <div id="room-notfound" class="mt-3 hidden text-sm text-red-500 font-semibold">ไม่พบข้อมูลห้องนี้</div>
+        </div>
+
+        <!-- Guest List -->
+        {% if guests %}
+        <div class="card mb-6">
+            <h3 class="font-bold text-gray-800 mb-3">รายชื่อแขก ({{ guest_count }})</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3">ห้อง</th><th class="pb-3">ชื่อ</th><th class="pb-3">Checkout</th><th class="pb-3">Package</th><th class="pb-3">BF</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for g in guests %}
+                        <tr>
+                            <td class="py-2 font-semibold">{{ g.room_number }}</td>
+                            <td class="py-2">{{ g.guest_name }}</td>
+                            <td class="py-2">{{ g.checkout_date|date:"d/m" }}</td>
+                            <td class="py-2">{{ g.package_type }}</td>
+                            <td class="py-2">{% if g.bf_included %}<span class="text-green-600 font-semibold">Yes</span>{% else %}<span class="text-gray-400">No</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Pending Room Charges -->
+        {% if pending_charges %}
+        <div class="card mb-6">
+            <h3 class="font-bold text-gray-800 mb-3">Pending Room Charges</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3">ห้อง</th><th class="pb-3">ชื่อ</th><th class="pb-3 text-right">จำนวน</th><th class="pb-3">เวลา</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for c in pending_charges %}
+                        <tr>
+                            <td class="py-2 font-semibold">{{ c.room_number }}</td>
+                            <td class="py-2">{{ c.guest_name }}</td>
+                            <td class="py-2 text-right font-bold">฿{{ c.amount|floatformat:0 }}</td>
+                            <td class="py-2 text-gray-400">{{ c.created_at|time:"H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent BF Settlements -->
+        {% if recent_settlements %}
+        <div class="card">
+            <h3 class="font-bold text-gray-800 mb-3">BF Settlement ล่าสุด</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">Walk-in</th><th class="pb-3 text-right">ยอด</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for s in recent_settlements %}
+                        <tr>
+                            <td class="py-2">{{ s.date|date:"d/m" }}</td>
+                            <td class="py-2 text-right font-semibold">{{ s.total_covers }}</td>
+                            <td class="py-2 text-right">{{ s.bb_covers }}</td>
+                            <td class="py-2 text-right">{{ s.hb_covers }}</td>
+                            <td class="py-2 text-right">{{ s.fb_covers }}</td>
+                            <td class="py-2 text-right">{{ s.walkin_covers }}</td>
+                            <td class="py-2 text-right font-bold">฿{{ s.total_amount|floatformat:0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+function lookupRoom() {
+    const room = document.getElementById('room-input').value.trim();
+    if (!room) return;
+    fetch('/hotel/api/room-lookup/?room=' + encodeURIComponent(room))
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('room-notfound').classList.add('hidden');
+        document.getElementById('room-result').classList.add('hidden');
+        if (data.found) {
+            document.getElementById('r-name').textContent = data.guest_name;
+            document.getElementById('r-room').textContent = data.room_number;
+            document.getElementById('r-checkout').textContent = data.checkout_date;
+            document.getElementById('r-package').textContent = data.package_type || '-';
+            document.getElementById('r-bf').textContent = data.bf_included ? 'Yes' : 'No';
+            document.getElementById('room-result').classList.remove('hidden');
+        } else {
+            document.getElementById('room-notfound').classList.remove('hidden');
+        }
+    });
+}
+</script>
+{% endblock %}

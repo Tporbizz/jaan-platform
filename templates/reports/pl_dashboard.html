@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}P&L Dashboard — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .kpi-ok { color: #16a34a; }
+    .kpi-warn { color: #ea580c; }
+    .kpi-critical { color: #dc2626; font-weight: 700; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="min-h-screen flex">
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4"><span class="text-lg">🍽️</span></a>
+        <a href="/dashboard/" class="sidebar-icon"><span class="text-sm">📊</span></a>
+        <a href="/pos/" class="sidebar-icon"><span class="text-sm">💳</span></a>
+        <div class="sidebar-icon active"><span class="text-white text-sm">📈</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon"><span class="text-sm">⚙️</span></a>
+    </aside>
+    <main class="flex-1 ml-[72px] p-8 max-w-[1200px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">P&L Dashboard</h1>
+                <p class="text-gray-400 mt-1">{{ month }}/{{ year }} — Profit & Loss</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/reports/pricing/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">Pricing</a>
+                <a href="/reports/variance/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">Variance</a>
+                <a href="/reports/sensibo/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">AC/IoT</a>
+            </div>
+        </div>
+
+        <!-- Revenue -->
+        <div class="card mb-6">
+            <h3 class="font-bold text-gray-800 mb-4">Revenue</h3>
+            <div class="grid grid-cols-5 gap-4">
+                <div><div class="text-xs text-gray-400">Dine-in</div><div class="text-xl font-bold">฿{{ pl.dine_in_revenue|floatformat:0 }}</div></div>
+                <div><div class="text-xs text-gray-400">Beverage</div><div class="text-xl font-bold">฿{{ pl.beverage_revenue|floatformat:0 }}</div></div>
+                <div><div class="text-xs text-gray-400">BF Hotel</div><div class="text-xl font-bold">฿{{ pl.bf_revenue|floatformat:0 }}</div></div>
+                <div><div class="text-xs text-gray-400">Events</div><div class="text-xl font-bold">฿{{ pl.event_revenue|floatformat:0 }}</div></div>
+                <div class="card-dark"><div class="text-xs opacity-60">Total</div><div class="text-2xl font-extrabold">฿{{ pl.total_revenue|floatformat:0 }}</div></div>
+            </div>
+        </div>
+
+        <!-- COGS + OpEx -->
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="card">
+                <h3 class="font-bold text-gray-800 mb-4">COGS</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between"><span class="text-gray-500">Food Cost (actual)</span><span class="font-semibold">฿{{ pl.food_cost_actual|floatformat:0 }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Waste</span><span class="font-semibold">฿{{ pl.waste_cost|floatformat:0 }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Variance</span><span class="font-semibold {% if pl.variance_cost > 0 %}text-red-500{% endif %}">฿{{ pl.variance_cost|floatformat:0 }}</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="font-bold text-gray-800 mb-4">Operating Expenses</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between"><span class="text-gray-500">Labour</span><span class="font-semibold">฿{{ pl.labour_cost|floatformat:0 }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Electricity (AC)</span><span class="font-semibold">฿{{ pl.electricity_cost|floatformat:0 }}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Other</span><span class="font-semibold">฿{{ pl.other_expenses|floatformat:0 }}</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Line -->
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="card {% if pl.gross_profit > 0 %}bg-green-50{% else %}bg-red-50{% endif %}">
+                <div class="text-xs text-gray-400">Gross Profit</div>
+                <div class="text-3xl font-extrabold {% if pl.gross_profit > 0 %}text-green-700{% else %}text-red-700{% endif %}">฿{{ pl.gross_profit|floatformat:0 }}</div>
+            </div>
+            <div class="card-dark">
+                <div class="text-xs opacity-60">Net Profit</div>
+                <div class="text-3xl font-extrabold {% if pl.net_profit > 0 %}text-green-400{% else %}text-red-400{% endif %}">฿{{ pl.net_profit|floatformat:0 }}</div>
+            </div>
+        </div>
+
+        <!-- KPI Gauges -->
+        <div class="card">
+            <h3 class="font-bold text-gray-800 mb-4">KPI vs Target</h3>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="text-4xl font-extrabold {% if pl.food_cost_pct <= 33 %}kpi-ok{% elif pl.food_cost_pct <= 37 %}kpi-warn{% else %}kpi-critical{% endif %}">{{ pl.food_cost_pct|floatformat:1 }}%</div>
+                    <div class="text-xs text-gray-400 mt-1">Food Cost % (target ≤33%)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-extrabold {% if pl.labour_cost_pct <= 30 %}kpi-ok{% elif pl.labour_cost_pct <= 34 %}kpi-warn{% else %}kpi-critical{% endif %}">{{ pl.labour_cost_pct|floatformat:1 }}%</div>
+                    <div class="text-xs text-gray-400 mt-1">Labour Cost % (target ≤30%)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-extrabold {% if pl.prime_cost_pct <= 63 %}kpi-ok{% elif pl.prime_cost_pct <= 68 %}kpi-warn{% else %}kpi-critical{% endif %}">{{ pl.prime_cost_pct|floatformat:1 }}%</div>
+                    <div class="text-xs text-gray-400 mt-1">Prime Cost % (target ≤63%)</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

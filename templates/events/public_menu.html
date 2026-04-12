@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ session.name }} — Order</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', 'Noto Sans Thai', system-ui, sans-serif; background: #FDF8F3; }
+        .menu-btn { background: white; border: 1.5px solid #f0e0cc; border-radius: 1rem; padding: 1rem; cursor: pointer; transition: all 0.15s; }
+        .menu-btn:active { transform: scale(0.97); border-color: #d4a017; }
+        .menu-btn.selected { border-color: #1a1a2e; background: #f5f0ea; }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+    <div class="max-w-lg mx-auto p-4">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold">{{ session.name }}</h1>
+            <p class="text-gray-400 text-sm">{{ session.location }} · {{ session.date|date:"d/m/Y" }}</p>
+        </div>
+
+        <div class="space-y-3" id="menu-list">
+            {% for item in session.menu_snapshot %}
+            <div class="menu-btn flex items-center justify-between" data-id="{{ item.id }}" data-price="{{ item.price }}" data-name="{{ item.name }}" onclick="toggleItem(this)">
+                <div>
+                    <div class="font-semibold text-gray-800">{{ item.name }}</div>
+                    {% if item.name_en %}<div class="text-xs text-gray-400">{{ item.name_en }}</div>{% endif %}
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-lg">฿{{ item.price }}</div>
+                    <div class="qty-control hidden flex items-center gap-2 mt-1">
+                        <button onclick="event.stopPropagation(); changeQty(this, -1)" class="w-7 h-7 bg-cream-100 rounded-lg text-center font-bold">-</button>
+                        <span class="qty-display text-sm font-bold">1</span>
+                        <button onclick="event.stopPropagation(); changeQty(this, 1)" class="w-7 h-7 bg-cream-100 rounded-lg text-center font-bold">+</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div class="max-w-lg mx-auto flex items-center justify-between">
+            <div>
+                <div class="text-sm text-gray-400"><span id="item-count">0</span> รายการ</div>
+                <div class="text-2xl font-bold" id="cart-total">฿0</div>
+            </div>
+            <button onclick="submitOrder()" id="btn-order" disabled
+                class="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-40 text-lg">
+                สั่งเลย
+            </button>
+        </div>
+    </div>
+
+    <!-- Success -->
+    <div id="success" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 text-center max-w-sm mx-4">
+            <div class="text-5xl mb-3">✅</div>
+            <div class="text-xl font-bold mb-1">สั่งสำเร็จ!</div>
+            <div class="text-gray-400 text-sm mb-2" id="success-order"></div>
+            <div class="text-2xl font-bold text-orange-600 mb-4" id="success-total"></div>
+            <p class="text-sm text-gray-500 mb-4">กรุณาชำระเงินด้วย QR PromptPay</p>
+            <button onclick="location.reload()" class="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold">สั่งเพิ่ม</button>
+        </div>
+    </div>
+
+<script>
+const cart = {};
+
+function toggleItem(el) {
+    const id = parseInt(el.dataset.id);
+    const ctrl = el.querySelector('.qty-control');
+    if (cart[id]) {
+        delete cart[id];
+        el.classList.remove('selected');
+        ctrl.classList.add('hidden');
+    } else {
+        cart[id] = { id, name: el.dataset.name, price: parseFloat(el.dataset.price), qty: 1 };
+        el.classList.add('selected');
+        ctrl.classList.remove('hidden');
+        el.querySelector('.qty-display').textContent = '1';
+    }
+    updateCart();
+}
+
+function changeQty(btn, delta) {
+    const el = btn.closest('.menu-btn');
+    const id = parseInt(el.dataset.id);
+    if (!cart[id]) return;
+    cart[id].qty = Math.max(1, cart[id].qty + delta);
+    el.querySelector('.qty-display').textContent = cart[id].qty;
+    updateCart();
+}
+
+function updateCart() {
+    const items = Object.values(cart);
+    const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+    document.getElementById('item-count').textContent = items.length;
+    document.getElementById('cart-total').textContent = '฿' + total.toLocaleString();
+    document.getElementById('btn-order').disabled = items.length === 0;
+}
+
+function submitOrder() {
+    const items = Object.values(cart).map(i => ({
+        menu_item_id: i.id, quantity: i.qty,
+    }));
+    document.getElementById('btn-order').disabled = true;
+    document.getElementById('btn-order').textContent = 'กำลังสั่ง...';
+
+    fetch('/events/qr/{{ session.session_token }}/order/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            document.getElementById('success-order').textContent = '#' + data.order_number;
+            document.getElementById('success-total').textContent = '฿' + parseFloat(data.total).toLocaleString();
+            document.getElementById('success').classList.remove('hidden');
+        }
+    });
+}
+</script>
+</body>
+</html>

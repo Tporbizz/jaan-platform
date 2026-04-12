@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Shift Calendar — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .shift-m { background: #fef9c3; color: #a16207; }
+    .shift-e { background: #dbeafe; color: #1d4ed8; }
+    .shift-s { background: #f3e8ff; color: #7c3aed; }
+    .shift-f { background: #e5e7eb; color: #374151; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">ตารางกะ</h1>
+            <p class="text-gray-400 mt-1">สัปดาห์นี้ — {{ days.0|date:"d/m" }} ถึง {{ days.6|date:"d/m" }}</p>
+        </div>
+        <a href="/hr/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← HR</a>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-xs text-gray-400 border-b border-cream-200">
+                        <th class="pb-3 text-left w-40">พนักงาน</th>
+                        {% for d in days %}
+                        <th class="pb-3 text-center">{{ d|date:"D" }}<br>{{ d|date:"d/m" }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-100">
+                    {% for emp_id, row in grid.items %}
+                    <tr>
+                        <td class="py-3 font-semibold">{{ row.employee.name }}</td>
+                        {% for d in days %}
+                        <td class="py-3 text-center">
+                            {% with shift=row.days|dictsort:d %}
+                            {% endwith %}
+                            {% for d2, shift in row.days.items %}
+                                {% if d2 == d %}
+                                    {% if shift %}
+                                    <span class="text-xs px-2 py-1 rounded-lg font-medium
+                                        {% if shift.shift_type == 'morning' %}shift-m
+                                        {% elif shift.shift_type == 'evening' %}shift-e
+                                        {% elif shift.shift_type == 'split' %}shift-s
+                                        {% else %}shift-f{% endif %}">
+                                        {{ shift.get_shift_type_display }}
+                                    </span>
+                                    {% else %}
+                                    <button onclick="assignShift({{ row.employee.id }}, '{{ d|date:'Y-m-d' }}')"
+                                        class="text-gray-300 hover:text-gray-500 text-lg" title="กำหนดกะ">+</button>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Shift Modal -->
+<div id="shift-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 max-w-sm mx-4 w-full">
+        <h3 class="text-lg font-bold mb-4">กำหนดกะ</h3>
+        <form method="post" action="/hr/shifts/assign/">
+            {% csrf_token %}
+            <input type="hidden" name="employee_id" id="modal-emp-id">
+            <input type="hidden" name="date" id="modal-date">
+            <select name="shift_type" class="w-full border border-cream-200 rounded-xl px-4 py-2.5 text-sm mb-4">
+                {% for val, label in shift_types %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">บันทึก</button>
+                <button type="button" onclick="closeModal()" class="flex-1 py-2.5 bg-cream-100 text-gray-700 text-sm font-semibold rounded-xl">ยกเลิก</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function assignShift(empId, date) {
+    document.getElementById('modal-emp-id').value = empId;
+    document.getElementById('modal-date').value = date;
+    document.getElementById('shift-modal').classList.remove('hidden');
+}
+function closeModal() {
+    document.getElementById('shift-modal').classList.add('hidden');
+}
+</script>
+{% endblock %}

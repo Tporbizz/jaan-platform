@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Payroll — Jaan{% endblock %}
+{% block extra_head %}<style>.card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); } .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }</style>{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Payroll</h1>
+            <p class="text-gray-400 mt-1">{{ month }}/{{ year }} — พนักงาน {{ employee_count }} คน</p>
+        </div>
+        <a href="/hr/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← HR</a>
+    </div>
+
+    <!-- Summary -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="card-dark">
+            <div class="text-xs opacity-60">รวมจ่ายสุทธิ</div>
+            <div class="text-3xl font-extrabold mt-1">฿{{ total_payroll|floatformat:0 }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">จำนวนพนักงาน</div>
+            <div class="text-3xl font-extrabold mt-1">{{ employee_count }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">เดือน</div>
+            <div class="text-xl font-bold mt-1">{{ month }}/{{ year }}</div>
+        </div>
+    </div>
+
+    <!-- Payroll Table -->
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                        <th class="pb-3">พนักงาน</th>
+                        <th class="pb-3 text-right">วันทำงาน</th>
+                        <th class="pb-3 text-right">ชม.ปกติ</th>
+                        <th class="pb-3 text-right">OT (ชม.)</th>
+                        <th class="pb-3 text-right">เงินเดือน/ค่าแรง</th>
+                        <th class="pb-3 text-right">OT</th>
+                        <th class="pb-3 text-right">SSO</th>
+                        <th class="pb-3 text-right font-bold">สุทธิ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-100">
+                    {% for r in records %}
+                    <tr>
+                        <td class="py-3">
+                            <div class="font-semibold">{{ r.employee.name }}</div>
+                            <div class="text-xs text-gray-400">{{ r.employee.get_position_display }}</div>
+                        </td>
+                        <td class="py-3 text-right">{{ r.days_worked }}</td>
+                        <td class="py-3 text-right">{{ r.regular_hours|floatformat:1 }}</td>
+                        <td class="py-3 text-right {% if r.ot_hours > 0 %}text-orange-500 font-semibold{% endif %}">{{ r.ot_hours|floatformat:1 }}</td>
+                        <td class="py-3 text-right">฿{{ r.base_pay|floatformat:0 }}</td>
+                        <td class="py-3 text-right">฿{{ r.ot_pay|floatformat:0 }}</td>
+                        <td class="py-3 text-right text-red-500">-฿{{ r.sso_deduction|floatformat:0 }}</td>
+                        <td class="py-3 text-right font-bold text-lg">฿{{ r.net_pay|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="border-t-2 border-gray-800">
+                        <td class="py-3 font-bold" colspan="7">รวมจ่ายสุทธิ</td>
+                        <td class="py-3 text-right font-extrabold text-lg">฿{{ total_payroll|floatformat:0 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

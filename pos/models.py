@@ -143,6 +143,10 @@ class KitchenTicket(models.Model):
     table = models.ForeignKey(Table, on_delete=models.SET_NULL, null=True)
     ticket_number = models.CharField(max_length=20)
     status = models.CharField(max_length=20, choices=TicketStatus.choices, default=TicketStatus.PENDING)
+    prepared_by = models.ForeignKey(
+        'hr.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='kitchen_tickets', help_text='เชฟ/คนครัวที่รับผิดชอบ',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)

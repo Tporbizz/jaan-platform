@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}BF Settlement — Jaan{% endblock %}
+{% block extra_head %}<style>.card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); } .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }</style>{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">BF Settlement</h1>
+            <p class="text-gray-400 mt-1">Breakfast Cover Tracking — Hotel</p>
+        </div>
+        <a href="/hotel/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← Hotel</a>
+    </div>
+
+    <!-- Input Form -->
+    <div class="card mb-6">
+        <h3 class="font-bold text-gray-800 mb-4">บันทึก BF วันนี้</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="date" value="{{ today|date:'Y-m-d' }}">
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">BB Covers</label>
+                    <input type="number" name="bb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">HB Covers</label>
+                    <input type="number" name="hb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">FB Covers</label>
+                    <input type="number" name="fb_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Walk-in Covers</label>
+                    <input type="number" name="walkin_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Total Covers</label>
+                    <input type="number" name="total_covers" value="0" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Total Amount (฿)</label>
+                    <input type="number" name="total_amount" value="0" step="0.01" min="0" class="w-full border border-cream-200 rounded-xl px-4 py-2 text-sm">
+                </div>
+            </div>
+            <button type="submit" class="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">บันทึก</button>
+        </form>
+    </div>
+
+    <!-- History -->
+    {% if settlements %}
+    <div class="card">
+        <h3 class="font-bold text-gray-800 mb-3">ประวัติ BF Settlement</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                        <th class="pb-3">วันที่</th><th class="pb-3 text-right">รวม</th><th class="pb-3 text-right">BB</th><th class="pb-3 text-right">HB</th><th class="pb-3 text-right">FB</th><th class="pb-3 text-right">Walk-in</th><th class="pb-3 text-right">ยอด (฿)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-100">
+                    {% for s in settlements %}
+                    <tr>
+                        <td class="py-2">{{ s.date|date:"d/m/Y" }}</td>
+                        <td class="py-2 text-right font-semibold">{{ s.total_covers }}</td>
+                        <td class="py-2 text-right">{{ s.bb_covers }}</td>
+                        <td class="py-2 text-right">{{ s.hb_covers }}</td>
+                        <td class="py-2 text-right">{{ s.fb_covers }}</td>
+                        <td class="py-2 text-right">{{ s.walkin_covers }}</td>
+                        <td class="py-2 text-right font-bold">฿{{ s.total_amount|floatformat:0 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

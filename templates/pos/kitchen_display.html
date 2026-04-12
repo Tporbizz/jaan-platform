@@ -76,7 +76,22 @@
                     {% endfor %}
                 </div>
 
-                <div class="flex gap-2 mt-3">
+                <!-- เชฟรับผิดชอบ -->
+                <div class="mt-2 mb-1">
+                    {% if ticket.prepared_by %}
+                    <div class="text-xs text-gray-500">👨‍🍳 <span class="font-semibold">{{ ticket.prepared_by.name }}</span></div>
+                    {% elif kitchen_staff %}
+                    <select onchange="assignChef({{ ticket.id }}, this.value)"
+                        class="w-full text-xs border border-cream-200 rounded-lg px-2 py-1 bg-white">
+                        <option value="">— เลือกเชฟ —</option>
+                        {% for staff in kitchen_staff %}
+                        <option value="{{ staff.id }}">{{ staff.name }} ({{ staff.get_position_display }})</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </div>
+
+                <div class="flex gap-2 mt-2">
                     {% if ticket.status == 'pending' %}
                     <button onclick="updateTicket({{ ticket.id }}, 'start')"
                         class="flex-1 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition">
@@ -110,6 +125,19 @@ function updateTicket(ticketId, action) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({ action }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) window.location.reload();
+    });
+}
+
+function assignChef(ticketId, chefId) {
+    if (!chefId) return;
+    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ action: 'assign_chef', chef_id: parseInt(chefId) }),
     })
     .then(r => r.json())
     .then(data => {

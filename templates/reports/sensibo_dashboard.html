@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}AC / IoT — Jaan{% endblock %}
+{% block extra_head %}<style>.card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); } .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }</style>{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">AC / Sensibo IoT</h1>
+            <p class="text-gray-400 mt-1">ค่าไฟ AC — ติดตามและลดต้นทุน</p>
+        </div>
+        <a href="/reports/pl/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← P&L</a>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="card-dark">
+            <div class="text-xs opacity-60">ค่าไฟ AC วันนี้</div>
+            <div class="text-3xl font-extrabold mt-1">฿{{ today_cost|floatformat:0 }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">ค่าไฟ AC เดือนนี้</div>
+            <div class="text-3xl font-extrabold mt-1">฿{{ month_cost|floatformat:0 }}</div>
+        </div>
+        <div class="card">
+            <div class="text-xs text-gray-400">สถานะปัจจุบัน</div>
+            {% if latest %}
+            <div class="text-xl font-bold mt-1">{{ latest.temperature }}°C · {{ latest.humidity }}%</div>
+            <div class="text-xs text-gray-400 mt-1">AC {% if latest.ac_on %}เปิด ({{ latest.power_watts }}W){% else %}ปิด{% endif %}</div>
+            {% else %}
+            <div class="text-gray-400 mt-2 text-sm">ยังไม่มีข้อมูล — รัน <code>fetch_sensibo</code></div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if today_logs %}
+    <div class="card">
+        <h3 class="font-bold text-gray-800 mb-3">Log วันนี้</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                        <th class="pb-3">เวลา</th><th class="pb-3">อุณหภูมิ</th><th class="pb-3">ความชื้น</th><th class="pb-3">AC</th><th class="pb-3 text-right">Power</th><th class="pb-3 text-right">Cost</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-100">
+                    {% for log in today_logs %}
+                    <tr>
+                        <td class="py-2">{{ log.timestamp|time:"H:i" }}</td>
+                        <td class="py-2">{{ log.temperature }}°C</td>
+                        <td class="py-2">{{ log.humidity }}%</td>
+                        <td class="py-2">{% if log.ac_on %}<span class="text-green-600 font-semibold">ON</span>{% else %}<span class="text-gray-400">OFF</span>{% endif %}</td>
+                        <td class="py-2 text-right">{{ log.power_watts }}W</td>
+                        <td class="py-2 text-right font-semibold">฿{{ log.estimated_cost_thb|floatformat:1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Pricing Calculator — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .sidebar-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.2s; cursor: pointer; }
+    .sidebar-icon:hover { background: #f0e0cc; }
+    .sidebar-icon.active { background: #1a1a2e; }
+    .abc-star { background: #f0fdf4; color: #16a34a; }
+    .abc-plow { background: #eff6ff; color: #2563eb; }
+    .abc-puzzle { background: #fff7ed; color: #ea580c; }
+    .abc-dog { background: #fef2f2; color: #dc2626; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="min-h-screen flex">
+    <aside class="w-[72px] flex flex-col items-center py-6 gap-2 fixed h-full z-10">
+        <a href="/" class="w-11 h-11 bg-cream-200 rounded-2xl flex items-center justify-center mb-4"><span class="text-lg">🍽️</span></a>
+        <a href="/dashboard/" class="sidebar-icon"><span class="text-sm">📊</span></a>
+        <a href="/pos/" class="sidebar-icon"><span class="text-sm">💳</span></a>
+        <a href="/stock/" class="sidebar-icon"><span class="text-sm">📦</span></a>
+        <div class="sidebar-icon active"><span class="text-white text-sm">🍽️</span></div>
+        <div class="flex-1"></div>
+        <a href="/admin/" class="sidebar-icon"><span class="text-sm">⚙️</span></a>
+    </aside>
+    <main class="flex-1 ml-[72px] p-8 max-w-[1400px]">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Food Cost & Pricing</h1>
+                <p class="text-gray-400 mt-1">ABC Menu Analysis — {{ total_items }} เมนู · {{ high_fc_count }} เมนู FC > 35%</p>
+            </div>
+            <a href="/reports/variance/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200 hover:bg-cream-50">Variance Report →</a>
+        </div>
+        <div class="card">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                            <th class="pb-3 font-medium">เมนู</th>
+                            <th class="pb-3 font-medium text-right">ราคาขาย</th>
+                            <th class="pb-3 font-medium text-right">ต้นทุน</th>
+                            <th class="pb-3 font-medium text-right">FC%</th>
+                            <th class="pb-3 font-medium text-right">GP/จาน</th>
+                            <th class="pb-3 font-medium text-center">ABC</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-cream-100">
+                        {% for d in items_data %}
+                        <tr class="hover:bg-cream-50">
+                            <td class="py-3 font-medium text-gray-800">{{ d.item.name }}</td>
+                            <td class="py-3 text-right">฿{{ d.item.selling_price|floatformat:0 }}</td>
+                            <td class="py-3 text-right text-gray-500">฿{{ d.cost|floatformat:1 }}</td>
+                            <td class="py-3 text-right font-semibold {% if d.fc_pct > 35 %}text-red-600{% elif d.fc_pct > 33 %}text-orange-500{% else %}text-green-600{% endif %}">{{ d.fc_pct|floatformat:1 }}%</td>
+                            <td class="py-3 text-right font-semibold">฿{{ d.gp|floatformat:0 }}</td>
+                            <td class="py-3 text-center"><span class="text-xs px-2.5 py-1 rounded-lg font-medium abc-{{ d.abc }}">{{ d.abc|upper }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-6">
+            <h3 class="font-bold text-gray-800 mb-3">ABC Legend</h3>
+            <div class="grid grid-cols-4 gap-3 text-sm">
+                <div class="abc-star rounded-xl p-3"><b>STAR</b> — FC ≤33%, high margin + high sales</div>
+                <div class="abc-plow rounded-xl p-3"><b>PLOW</b> — FC 33-38%, good but could improve</div>
+                <div class="abc-puzzle rounded-xl p-3"><b>PUZZLE</b> — FC 38-45%, review recipe/pricing</div>
+                <div class="abc-dog rounded-xl p-3"><b>DOG</b> — FC >45%, remove or reprice</div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

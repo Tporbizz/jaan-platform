@@ -270,11 +270,23 @@ def kitchen_display(request):
         tenant=tenant,
         status__in=['pending', 'in_progress'],
         created_at__date=timezone.now().date(),
-    ).select_related('order', 'table').prefetch_related('items__order_item__menu_item')
+    ).select_related('order', 'table', 'prepared_by').prefetch_related('items__order_item__menu_item')
+
+    # Kitchen staff on shift today
+    from hr.models import ShiftSchedule
+    kitchen_staff = [
+        s.employee for s in
+        ShiftSchedule.objects.filter(
+            employee__tenant=tenant,
+            date=timezone.now().date(),
+            employee__position__in=('chef', 'sous_chef', 'cook'),
+        ).select_related('employee')
+    ]
 
     context = {
         'tickets': tickets,
         'total_tickets': tickets.count(),
+        'kitchen_staff': kitchen_staff,
     }
     return render(request, 'pos/kitchen_display.html', context)
 
@@ -315,6 +327,13 @@ def update_ticket(request, ticket_id):
             ticket.status = 'done'
             ticket.completed_at = timezone.now()
             ticket.save()
+    elif action == 'assign_chef':
+        from hr.models import Employee
+        chef_id = data.get('chef_id')
+        if chef_id:
+            chef = get_object_or_404(Employee, id=chef_id)
+            ticket.prepared_by = chef
+            ticket.save(update_fields=['prepared_by'])
 
     return JsonResponse({'ok': True, 'status': ticket.status})
 

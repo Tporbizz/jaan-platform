@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Attendance — Jaan{% endblock %}
+{% block extra_head %}<style>.card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }</style>{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">ลงเวลางาน</h1>
+            <p class="text-gray-400 mt-1">{{ today|date:"d/m/Y" }}</p>
+        </div>
+        <a href="/hr/" class="px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← HR</a>
+    </div>
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs text-gray-400 border-b border-cream-200">
+                        <th class="pb-3">พนักงาน</th><th class="pb-3">ตำแหน่ง</th><th class="pb-3">เข้างาน</th><th class="pb-3">ออกงาน</th><th class="pb-3 text-right">ชั่วโมง</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-100">
+                    {% for emp in employees %}
+                    <tr>
+                        <td class="py-3 font-semibold">{{ emp.name }}</td>
+                        <td class="py-3 text-gray-500">{{ emp.get_position_display }}</td>
+                        <td class="py-3">
+                            <input type="time" name="in_{{ emp.id }}"
+                                value="{% if attendance %}{% with att=attendance|dictsort:emp.id %}{% endwith %}{% for eid, att in attendance.items %}{% if eid == emp.id %}{{ att.clock_in|time:'H:i' }}{% endif %}{% endfor %}{% endif %}"
+                                class="border border-cream-200 rounded-lg px-3 py-1.5 text-sm">
+                        </td>
+                        <td class="py-3">
+                            <input type="time" name="out_{{ emp.id }}"
+                                value="{% for eid, att in attendance.items %}{% if eid == emp.id %}{{ att.clock_out|time:'H:i' }}{% endif %}{% endfor %}"
+                                class="border border-cream-200 rounded-lg px-3 py-1.5 text-sm">
+                        </td>
+                        <td class="py-3 text-right font-semibold">
+                            {% for eid, att in attendance.items %}{% if eid == emp.id %}{{ att.hours_worked|floatformat:1 }}h{% if att.ot_hours > 0 %} <span class="text-orange-500">+{{ att.ot_hours|floatformat:1 }}OT</span>{% endif %}{% endif %}{% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">บันทึกเวลา</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
