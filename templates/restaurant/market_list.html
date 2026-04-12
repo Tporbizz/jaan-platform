@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Market List — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.25rem; color: white; }
+    .market-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid #f0e0cc; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .market-item:last-child { border-bottom: none; }
+    .market-item.checked { opacity: 0.35; }
+    .market-item.checked .item-name { text-decoration: line-through; }
+    .check-circle { width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #d4c5b5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+    .market-item.checked .check-circle { background: #1a1a2e; border-color: #1a1a2e; }
+    .supplier-header { position: sticky; top: 0; background: #FDF8F3; z-index: 5; padding: 0.75rem 0; }
+
+    @media print {
+        body { background: white !important; font-size: 11pt; }
+        .no-print { display: none !important; }
+        .card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+        .card-dark { background: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .supplier-header { position: static; }
+        .check-circle { border: 2px solid #999; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto p-4 pb-32">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4 no-print">
+        <div>
+            <h1 class="text-2xl font-bold">รายการตลาด</h1>
+            <p class="text-gray-400 text-sm">{{ today|date:"d/m/Y" }} · {{ total_items }} รายการ</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="px-3 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">🖨️</button>
+            <a href="/procurement/reorder/" class="px-3 py-2 bg-white text-gray-700 text-sm font-semibold rounded-xl border border-cream-200">← Reorder</a>
+        </div>
+    </div>
+
+    <!-- Print header -->
+    <div class="hidden print:block mb-4">
+        <h1 class="text-xl font-bold">รายการตลาด — สารข้าว</h1>
+        <p class="text-sm text-gray-500">{{ today|date:"d/m/Y" }} · {{ total_items }} รายการ · ประมาณ ฿{{ grand_total|floatformat:0 }}</p>
+    </div>
+
+    <!-- Summary -->
+    <div class="card-dark mb-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <div class="text-xs opacity-60">งบประมาณรวม</div>
+                <div class="text-2xl font-extrabold">฿{{ grand_total|floatformat:0 }}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs opacity-60">ร้านค้า</div>
+                <div class="text-lg font-bold">{{ groups|length }} แห่ง</div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs opacity-60">ซื้อแล้ว</div>
+                <div class="text-lg font-bold" id="checked-count">0/{{ total_items }}</div>
+            </div>
+        </div>
+        <!-- Progress bar -->
+        <div class="mt-3 bg-white/20 rounded-full h-2 overflow-hidden">
+            <div id="progress-bar" class="bg-green-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Supplier Groups -->
+    {% for group in groups %}
+    <div class="mb-4">
+        <div class="supplier-header">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">🏪</span>
+                    <div>
+                        <div class="font-bold text-gray-800">{{ group.supplier.name }}</div>
+                        {% if group.supplier.phone %}
+                        <a href="tel:{{ group.supplier.phone }}" class="text-xs text-blue-500 no-print">{{ group.supplier.phone }}</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-sm font-bold text-gray-600">~฿{{ group.total|floatformat:0 }}</div>
+            </div>
+        </div>
+        <div class="card">
+            {% for entry in group.items %}
+            <div class="market-item" onclick="toggleItem(this)">
+                <div class="check-circle">
+                    <svg class="check-icon hidden" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="item-name font-semibold text-gray-800">{{ entry.item.name }}</div>
+                    <div class="text-xs text-gray-400">{{ entry.item.category.name }} · คงเหลือ {{ entry.item.current_stock|floatformat:0 }} {{ entry.item.unit.abbreviation }}</div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="font-bold text-lg">{{ entry.need_qty|floatformat:0 }}</div>
+                    <div class="text-xs text-gray-400">{{ entry.item.unit.abbreviation }} · ~฿{{ entry.est_cost|floatformat:0 }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Items without supplier -->
+    {% if no_supplier_items %}
+    <div class="mb-4">
+        <div class="supplier-header">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">❓</span>
+                <div class="font-bold text-gray-800">ยังไม่มี supplier</div>
+            </div>
+        </div>
+        <div class="card">
+            {% for entry in no_supplier_items %}
+            <div class="market-item" onclick="toggleItem(this)">
+                <div class="check-circle">
+                    <svg class="check-icon hidden" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="item-name font-semibold text-gray-800">{{ entry.item.name }}</div>
+                    <div class="text-xs text-gray-400">{{ entry.item.category.name }}</div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="font-bold text-lg">{{ entry.need_qty|floatformat:0 }}</div>
+                    <div class="text-xs text-gray-400">{{ entry.item.unit.abbreviation }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not groups and not no_supplier_items %}
+    <div class="card text-center py-12">
+        <div class="text-4xl mb-3">✅</div>
+        <div class="text-xl font-bold text-gray-800">สต๊อกครบ!</div>
+        <p class="text-gray-400 mt-1">ไม่มีวัตถุดิบที่ต้องซื้อเพิ่ม</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- FAB: Share / Line -->
+<div class="fixed bottom-6 right-6 flex flex-col gap-2 no-print">
+    <button onclick="copyList()" class="w-14 h-14 bg-gray-900 text-white rounded-2xl shadow-lg flex items-center justify-center text-xl hover:bg-gray-800 transition" title="Copy list">
+        📋
+    </button>
+</div>
+
+<script>
+const totalItems = {{ total_items }};
+let checkedItems = 0;
+
+function toggleItem(el) {
+    el.classList.toggle('checked');
+    const icon = el.querySelector('.check-icon');
+    icon.classList.toggle('hidden');
+
+    checkedItems = document.querySelectorAll('.market-item.checked').length;
+    document.getElementById('checked-count').textContent = checkedItems + '/' + totalItems;
+
+    const pct = totalItems > 0 ? (checkedItems / totalItems * 100) : 0;
+    document.getElementById('progress-bar').style.width = pct + '%';
+
+    // Save state
+    saveState();
+}
+
+function saveState() {
+    const items = document.querySelectorAll('.market-item');
+    const state = [];
+    items.forEach((el, i) => { if (el.classList.contains('checked')) state.push(i); });
+    localStorage.setItem('market_list_{{ today|date:"Ymd" }}', JSON.stringify(state));
+}
+
+function loadState() {
+    const state = JSON.parse(localStorage.getItem('market_list_{{ today|date:"Ymd" }}') || '[]');
+    const items = document.querySelectorAll('.market-item');
+    state.forEach(i => {
+        if (items[i]) {
+            items[i].classList.add('checked');
+            items[i].querySelector('.check-icon').classList.remove('hidden');
+        }
+    });
+    checkedItems = state.length;
+    document.getElementById('checked-count').textContent = checkedItems + '/' + totalItems;
+    const pct = totalItems > 0 ? (checkedItems / totalItems * 100) : 0;
+    document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function copyList() {
+    let text = '🛒 รายการตลาด สารข้าว {{ today|date:"d/m/Y" }}\n\n';
+    {% for group in groups %}
+    text += '🏪 {{ group.supplier.name }} (~฿{{ group.total|floatformat:0 }})\n';
+    {% for entry in group.items %}
+    text += '  {{ entry.item.name }} {{ entry.need_qty|floatformat:0 }} {{ entry.item.unit.abbreviation }}\n';
+    {% endfor %}
+    text += '\n';
+    {% endfor %}
+    text += '💰 รวม ~฿{{ grand_total|floatformat:0 }}';
+
+    navigator.clipboard.writeText(text).then(() => {
+        alert('คัดลอกแล้ว! ส่งต่อใน Line ได้เลย');
+    });
+}
+
+loadState();
+</script>
+{% endblock %}

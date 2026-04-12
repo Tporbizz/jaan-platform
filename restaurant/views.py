@@ -421,3 +421,71 @@ def bulk_price_update(request):
         'reasons': PriceHistory.ChangeReason.choices,
     }
     return render(request, 'restaurant/bulk_price_update.html', context)
+
+
+# =============================================================================
+# Market List — รายการตลาด (print-friendly, mobile-friendly)
+# =============================================================================
+
+def market_list(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'restaurant/market_list.html', {'no_tenant': True})
+
+    # Items ต่ำกว่า min_stock + items ที่ user เพิ่มเอง (manual)
+    low_items = Item.objects.filter(
+        tenant=tenant, is_active=True,
+        current_stock__lt=F('min_stock'),
+    ).select_related('category', 'unit', 'default_supplier')
+
+    # จัดกลุ่มตาม supplier
+    supplier_groups = {}
+    no_supplier_items = []
+
+    for item in low_items:
+        supplier = item.default_supplier
+        if not supplier:
+            # ลองหาจาก PO ล่าสุด
+            last_po_item = POItem.objects.filter(
+                item=item, purchase_order__tenant=tenant,
+            ).order_by('-purchase_order__order_date').first()
+            if last_po_item:
+                supplier = last_po_item.purchase_order.supplier
+
+        need_qty = item.max_stock - item.current_stock if item.max_stock else item.min_stock * 2
+        need_qty = max(need_qty, 0)
+        est_cost = need_qty * item.cost_per_unit
+
+        entry = {
+            'item': item,
+            'need_qty': need_qty,
+            'est_cost': est_cost,
+        }
+
+        if supplier:
+            if supplier.id not in supplier_groups:
+                supplier_groups[supplier.id] = {
+                    'supplier': supplier,
+                    'items': [],
+                    'total': 0,
+                }
+            supplier_groups[supplier.id]['items'].append(entry)
+            supplier_groups[supplier.id]['total'] += est_cost
+        else:
+            no_supplier_items.append(entry)
+
+    # แปลงเป็น list เรียงตามชื่อ supplier
+    groups = sorted(supplier_groups.values(), key=lambda g: g['supplier'].name)
+    grand_total = sum(g['total'] for g in groups) + sum(e['est_cost'] for e in no_supplier_items)
+
+    context = {
+        'groups': groups,
+        'no_supplier_items': no_supplier_items,
+        'grand_total': grand_total,
+        'total_items': low_items.count(),
+        'today': timezone.now().date(),
+    }
+    return render(request, 'restaurant/market_list.html', context)
