@@ -6,6 +6,7 @@ import dj_database_url
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='.onrender.com', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])  # noqa: F405
 
 # --- Database: PostgreSQL จาก DATABASE_URL ---
 DATABASES = {
