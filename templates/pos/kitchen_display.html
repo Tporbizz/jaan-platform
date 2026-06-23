@@ -30,82 +30,21 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">จอครัว</h1>
-                <p class="text-gray-400 mt-1">{{ total_tickets }} รายการรอทำ</p>
+                <p class="text-gray-400 mt-1"><span id="ticket-count">{{ total_tickets }} รายการรอทำ</span></p>
             </div>
-            <div class="text-sm text-gray-400">อัปเดตอัตโนมัติทุก 10 วินาที</div>
-        </div>
-
-        {% if tickets %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {% for ticket in tickets %}
-            <div class="ticket ticket-{{ ticket.status }}" data-ticket-id="{{ ticket.id }}">
-                <div class="ticket-header">
-                    <div>
-                        <span class="text-lg font-bold">โต๊ะ {{ ticket.table.number|default:"N/A" }}</span>
-                        <span class="text-xs text-gray-400 ml-2">{{ ticket.ticket_number }}</span>
-                    </div>
-                    {% with mins=ticket.created_at|timesince %}
-                    <span class="timer {% if '0 min' in mins %}timer-ok{% elif 'hour' in mins %}timer-critical{% else %}timer-warn{% endif %}">
-                        {{ mins }}
-                    </span>
-                    {% endwith %}
-                </div>
-
-                <div class="space-y-0">
-                    {% for ti in ticket.items.all %}
-                    <div class="kt-item {% if ti.is_done %}done{% endif %}"
-                         onclick="markItemDone({{ ticket.id }}, {{ ti.id }})"
-                         style="cursor: pointer;">
-                        <span class="text-lg">{% if ti.is_done %}✅{% else %}⬜{% endif %}</span>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold">{{ ti.order_item.menu_item.name }} x{{ ti.quantity }}</span>
-                                <span class="text-xs px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 font-bold">{{ ti.order_item.menu_item.prep_time_minutes }} นาที</span>
-                            </div>
-                            {% if ti.special_request %}
-                            <div class="text-xs text-orange-600">{{ ti.special_request }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- เชฟรับผิดชอบ -->
-                <div class="mt-2 mb-1">
-                    {% if ticket.prepared_by %}
-                    <div class="text-xs text-gray-500">👨‍🍳 <span class="font-semibold">{{ ticket.prepared_by.name }}</span></div>
-                    {% elif kitchen_staff %}
-                    <select onchange="assignChef({{ ticket.id }}, this.value)"
-                        class="w-full text-xs border border-cream-200 rounded-lg px-2 py-1 bg-white">
-                        <option value="">— เลือกเชฟ —</option>
-                        {% for staff in kitchen_staff %}
-                        <option value="{{ staff.id }}">{{ staff.name }} ({{ staff.get_position_display }})</option>
-                        {% endfor %}
-                    </select>
-                    {% endif %}
-                </div>
-
-                <div class="flex gap-2 mt-2">
-                    {% if ticket.status == 'pending' %}
-                    <button onclick="updateTicket({{ ticket.id }}, 'start')"
-                        class="flex-1 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition">
-                        เริ่มทำ
-                    </button>
-                    {% endif %}
-                    <button onclick="updateTicket({{ ticket.id }}, 'done')"
-                        class="flex-1 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition">
-                        เสร็จทั้งหมด ✅
-                    </button>
-                </div>
+            <div class="text-sm text-gray-400 flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                อัปเดตสดทุก 5 วินาที
             </div>
-            {% endfor %}
         </div>
-        {% else %}
-        <div class="text-center py-20">
-            <span class="text-6xl mb-4 block">👨‍🍳</span>
-            <p class="text-gray-400 text-xl">ไม่มีรายการรอทำ — พักเบรกได้!</p>
+
+        <!-- กริดตั๋ว — HTMX poll เฉพาะส่วนนี้ ไม่ reload ทั้งหน้า -->
+        <div id="kds-grid"
+             hx-get="{% url 'pos:kitchen_grid' %}"
+             hx-trigger="every 5s"
+             hx-swap="innerHTML">
+            {% include 'pos/_kitchen_tickets.html' %}
         </div>
-        {% endif %}
     </main>
 </div>
 {% endblock %}
@@ -114,44 +53,26 @@
 <script>
 const csrfToken = '{{ csrf_token }}';
 
-function updateTicket(ticketId, action) {
-    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-        body: JSON.stringify({ action }),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) window.location.reload();
-    });
+// รีเฟรชเฉพาะกริดตั๋ว (ไม่ reload ทั้งหน้า) — ใช้หลังกดปุ่ม
+function refreshGrid() {
+    htmx.ajax('GET', "{% url 'pos:kitchen_grid' %}", { target: '#kds-grid', swap: 'innerHTML' });
 }
 
+function postTicket(ticketId, payload) {
+    return fetch(`/pos/kitchen/ticket/${ticketId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => { if (data.ok) refreshGrid(); });
+}
+
+function updateTicket(ticketId, action) { return postTicket(ticketId, { action }); }
+function markItemDone(ticketId, itemId) { return postTicket(ticketId, { action: 'item_done', item_id: itemId }); }
 function assignChef(ticketId, chefId) {
     if (!chefId) return;
-    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-        body: JSON.stringify({ action: 'assign_chef', chef_id: parseInt(chefId) }),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) window.location.reload();
-    });
+    return postTicket(ticketId, { action: 'assign_chef', chef_id: parseInt(chefId) });
 }
-
-function markItemDone(ticketId, itemId) {
-    fetch(`/pos/kitchen/ticket/${ticketId}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-        body: JSON.stringify({ action: 'item_done', item_id: itemId }),
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) window.location.reload();
-    });
-}
-
-// Auto-refresh every 10s
-setInterval(() => { window.location.reload(); }, 10000);
 </script>
 {% endblock %}

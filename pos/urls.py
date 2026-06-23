@@ -21,6 +21,7 @@ urlpatterns = [
 
     # Kitchen
     path('kitchen/', views.kitchen_display, name='kitchen_display'),
+    path('kitchen/grid/', views.kitchen_grid, name='kitchen_grid'),
     path('kitchen/data/', views.kitchen_data, name='kitchen_data'),
     path('kitchen/ticket/<int:ticket_id>/', views.update_ticket, name='update_ticket'),
 

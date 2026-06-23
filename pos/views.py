@@ -452,20 +452,14 @@ def send_to_kitchen(request, order_id):
 # Kitchen Display
 # =============================================================================
 
-@require_kitchen
-def kitchen_display(request):
-
-    tenant = request.user.tenant
-    if not tenant:
-        return render(request, 'pos/kitchen_display.html', {'no_tenant': True})
-
+def _kitchen_context(tenant):
+    """ข้อมูลตั๋วครัว + เชฟเข้ากะวันนี้ — ใช้ร่วมกันระหว่างหน้าเต็มและ partial (HTMX)"""
     tickets = KitchenTicket.objects.filter(
         tenant=tenant,
         status__in=['pending', 'in_progress'],
         created_at__date=timezone.now().date(),
     ).select_related('order', 'table', 'prepared_by').prefetch_related('items__order_item__menu_item')
 
-    # Kitchen staff on shift today
     from hr.models import ShiftSchedule
     kitchen_staff = [
         s.employee for s in
@@ -475,13 +469,28 @@ def kitchen_display(request):
             employee__position__in=('chef', 'sous_chef', 'cook'),
         ).select_related('employee')
     ]
-
-    context = {
+    return {
         'tickets': tickets,
         'total_tickets': tickets.count(),
         'kitchen_staff': kitchen_staff,
     }
-    return render(request, 'pos/kitchen_display.html', context)
+
+
+@require_kitchen
+def kitchen_display(request):
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'pos/kitchen_display.html', {'no_tenant': True})
+    return render(request, 'pos/kitchen_display.html', _kitchen_context(tenant))
+
+
+@require_kitchen
+def kitchen_grid(request):
+    """Partial — กริดตั๋วครัวสำหรับ HTMX poll (อัปเดตสดทุก 5 วิ)"""
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'pos/_kitchen_tickets.html', {'tickets': [], 'total_tickets': 0})
+    return render(request, 'pos/_kitchen_tickets.html', _kitchen_context(tenant))
 
 
 @require_POST

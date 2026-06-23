@@ -32,6 +32,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'accounts',
+    'core',
     'restaurant',
     'pos',
     'hotel_integration',
@@ -146,8 +147,9 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
 }
 
-# --- Line Notify ---
-LINE_NOTIFY_TOKEN = config('LINE_NOTIFY_TOKEN', default='')
+# --- LINE push (Messaging API — LINE Notify ปิดบริการแล้ว มี.ค. 2025) ---
+LINE_CHANNEL_ACCESS_TOKEN = config('LINE_CHANNEL_ACCESS_TOKEN', default='')
+LINE_NOTIFY_TO = config('LINE_NOTIFY_TO', default='')  # userId/groupId ปลายทาง
 
 # --- Sensibo ---
 SENSIBO_API_KEY = config('SENSIBO_API_KEY', default='')

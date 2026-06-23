@@ -1,0 +1,74 @@
+{% comment %}KDS ticket grid — polled by HTMX ทุก 5 วินาที (ไม่ reload ทั้งหน้า){% endcomment %}
+<span id="ticket-count" hx-swap-oob="true">{{ total_tickets }} รายการรอทำ</span>
+
+{% if tickets %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    {% for ticket in tickets %}
+    <div class="ticket ticket-{{ ticket.status }}" data-ticket-id="{{ ticket.id }}">
+        <div class="ticket-header">
+            <div>
+                <span class="text-lg font-bold">โต๊ะ {{ ticket.table.number|default:"N/A" }}</span>
+                <span class="text-xs text-gray-400 ml-2">{{ ticket.ticket_number }}</span>
+            </div>
+            {% with mins=ticket.created_at|timesince %}
+            <span class="timer {% if '0\xa0min' in mins or '0 min' in mins %}timer-ok{% elif 'hour' in mins %}timer-critical{% else %}timer-warn{% endif %}">
+                {{ mins }}
+            </span>
+            {% endwith %}
+        </div>
+
+        <div class="space-y-0">
+            {% for ti in ticket.items.all %}
+            <div class="kt-item {% if ti.is_done %}done{% endif %}"
+                 onclick="markItemDone({{ ticket.id }}, {{ ti.id }})"
+                 style="cursor: pointer;">
+                <span class="text-lg">{% if ti.is_done %}✅{% else %}⬜{% endif %}</span>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold">{{ ti.order_item.menu_item.name }} x{{ ti.quantity }}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 font-bold">{{ ti.order_item.menu_item.prep_time_minutes }} นาที</span>
+                    </div>
+                    {% if ti.special_request %}
+                    <div class="text-xs text-orange-600">{{ ti.special_request }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- เชฟรับผิดชอบ -->
+        <div class="mt-2 mb-1">
+            {% if ticket.prepared_by %}
+            <div class="text-xs text-gray-500">👨‍🍳 <span class="font-semibold">{{ ticket.prepared_by.name }}</span></div>
+            {% elif kitchen_staff %}
+            <select onchange="assignChef({{ ticket.id }}, this.value)"
+                class="w-full text-xs border border-cream-200 rounded-lg px-2 py-1 bg-white">
+                <option value="">— เลือกเชฟ —</option>
+                {% for staff in kitchen_staff %}
+                <option value="{{ staff.id }}">{{ staff.name }} ({{ staff.get_position_display }})</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+
+        <div class="flex gap-2 mt-2">
+            {% if ticket.status == 'pending' %}
+            <button onclick="updateTicket({{ ticket.id }}, 'start')"
+                class="flex-1 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition">
+                เริ่มทำ
+            </button>
+            {% endif %}
+            <button onclick="updateTicket({{ ticket.id }}, 'done')"
+                class="flex-1 py-2 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition">
+                เสร็จทั้งหมด ✅
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-20">
+    <span class="text-6xl mb-4 block">👨‍🍳</span>
+    <p class="text-gray-400 text-xl">ไม่มีรายการรอทำ — พักเบรกได้!</p>
+</div>
+{% endif %}

@@ -71,6 +71,10 @@ class Order(models.Model):
     closed_at = models.DateTimeField('ปิดเมื่อ', null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orders_created', verbose_name='สร้างโดย')
 
+    # ระบบอัตโนมัติ: กันตัดสต็อกซ้ำเมื่อจ่ายเงินแล้ว
+    stock_depleted = models.BooleanField('ตัดสต็อกแล้ว', default=False,
+                                         help_text='ระบบตั้งให้อัตโนมัติเมื่อตัดวัตถุดิบตามสูตรแล้ว')
+
     class Meta:
         db_table = 'pos_order'
         verbose_name = 'ออเดอร์'
@@ -115,6 +119,8 @@ class OrderItem(models.Model):
     status = models.CharField('สถานะ', max_length=20, choices=ItemStatus.choices, default=ItemStatus.PENDING)
     is_voided = models.BooleanField('ยกเลิกแล้ว', default=False)
     void_reason = models.CharField('เหตุผลยกเลิก', max_length=200, blank=True)
+    cost_snapshot = models.DecimalField('ต้นทุนวัตถุดิบจริง', max_digits=10, decimal_places=2, default=0,
+                                        help_text='ต้นทุนจริงที่ตัดจากสต็อก (FIFO) เมื่อขาย — ใช้คำนวณ Food Cost จริง')
     created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
     served_at = models.DateTimeField('เสิร์ฟเมื่อ', null=True, blank=True)
 

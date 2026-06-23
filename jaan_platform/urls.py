@@ -19,6 +19,36 @@ def landing(request):
     return redirect('login')
 
 
+def _today_kpis(tenant, today):
+    """KPI ยอดขายวันนี้ + P&L เดือนนี้ — คำนวณด้วย aggregate (กัน N+1)"""
+    from pos.models import Order
+    from reports.models import MonthlyPL
+
+    agg = Order.objects.filter(
+        tenant=tenant, status='paid', opened_at__date=today,
+    ).aggregate(
+        revenue=models.Sum('total'),
+        covers=models.Sum('guest_count'),
+        count=models.Count('id'),
+    )
+    pl = MonthlyPL.objects.filter(tenant=tenant, month=today.month, year=today.year).first()
+    return {
+        'today_revenue': agg['revenue'] or 0,
+        'today_order_count': agg['count'] or 0,
+        'today_covers': agg['covers'] or 0,
+        'pl': pl,
+        'today': today,
+    }
+
+
+def dashboard_kpis(request):
+    """Partial — แถบ KPI ยอดขายวันนี้ สำหรับ HTMX poll (อัปเดตสด)"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    today = timezone.now().date()
+    return render(request, 'includes/_dashboard_kpis.html', _today_kpis(request.user.tenant, today))
+
+
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -26,16 +56,11 @@ def dashboard(request):
     tenant = request.user.tenant
     today = timezone.now().date()
 
-    # Today's revenue from POS
-    from pos.models import Order
-    today_orders = Order.objects.filter(tenant=tenant, status='paid', opened_at__date=today)
-    today_revenue = sum(o.total for o in today_orders)
-    today_order_count = today_orders.count()
-    today_covers = sum(o.guest_count for o in today_orders)
-
-    # Monthly P&L
-    from reports.models import MonthlyPL
-    pl = MonthlyPL.objects.filter(tenant=tenant, month=today.month, year=today.year).first()
+    kpis = _today_kpis(tenant, today)
+    today_revenue = kpis['today_revenue']
+    today_order_count = kpis['today_order_count']
+    today_covers = kpis['today_covers']
+    pl = kpis['pl']
 
     # Expiry alerts
     from restaurant.models import LotBatch
@@ -95,6 +120,7 @@ def logout_view(request):
 urlpatterns = [
     path('', landing, name='landing'),
     path('dashboard/', dashboard, name='dashboard'),
+    path('dashboard/kpis/', dashboard_kpis, name='dashboard_kpis'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('admin/', admin.site.urls),

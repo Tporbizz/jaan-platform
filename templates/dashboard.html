@@ -39,38 +39,12 @@
             </div>
         </div>
 
-        <!-- Row 1: Revenue KPIs -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
-            <div class="card-dark">
-                <div class="text-xs opacity-60">ยอดวันนี้</div>
-                <div class="text-3xl font-extrabold mt-1">฿{{ today_revenue|floatformat:0 }}</div>
-                <div class="text-xs opacity-40 mt-1">{{ today_order_count }} ออเดอร์ · {{ today_covers }} คน</div>
-            </div>
-            {% if pl %}
-            <div class="card">
-                <div class="text-xs text-gray-400">ยอดเดือนนี้</div>
-                <div class="text-2xl font-extrabold mt-1">฿{{ pl.total_revenue|floatformat:0 }}</div>
-                <div class="text-xs text-gray-400 mt-1">Net: <span class="font-bold {% if pl.net_profit > 0 %}text-green-600{% else %}text-red-600{% endif %}">฿{{ pl.net_profit|floatformat:0 }}</span></div>
-            </div>
-            <div class="card">
-                <div class="text-xs text-gray-400">ต้นทุนอาหาร %</div>
-                <div class="text-3xl font-extrabold mt-1 {% if pl.food_cost_pct <= 33 %}kpi-ok{% elif pl.food_cost_pct <= 37 %}kpi-warn{% else %}kpi-critical{% endif %}">
-                    {{ pl.food_cost_pct|floatformat:1 }}%
-                </div>
-                <div class="text-xs text-gray-400 mt-1">เป้า ≤33%</div>
-            </div>
-            <div class="card">
-                <div class="text-xs text-gray-400">ต้นทุนหลัก %</div>
-                <div class="text-3xl font-extrabold mt-1 {% if pl.prime_cost_pct <= 63 %}kpi-ok{% elif pl.prime_cost_pct <= 68 %}kpi-warn{% else %}kpi-critical{% endif %}">
-                    {{ pl.prime_cost_pct|floatformat:1 }}%
-                </div>
-                <div class="text-xs text-gray-400 mt-1">เป้า ≤63%</div>
-            </div>
-            {% else %}
-            <div class="card col-span-3">
-                <div class="text-center py-4 text-gray-400 text-sm">ยังไม่มีข้อมูล P&L เดือนนี้ — <a href="/reports/pl/" class="text-blue-600 font-semibold">ดู P&L</a></div>
-            </div>
-            {% endif %}
+        <!-- Row 1: Revenue KPIs — อัปเดตสดทุก 20 วินาที -->
+        <div class="grid grid-cols-4 gap-4 mb-6"
+             hx-get="{% url 'dashboard_kpis' %}"
+             hx-trigger="every 20s"
+             hx-swap="innerHTML">
+            {% include 'includes/_dashboard_kpis.html' %}
         </div>
 
         <!-- Row 2: Alerts + Shifts -->
