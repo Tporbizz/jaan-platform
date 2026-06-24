@@ -77,6 +77,8 @@ class Supplier(models.Model):
 
 class Item(models.Model):
     tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='items', verbose_name='ร้าน')
+    code = models.CharField('รหัสวัตถุดิบ', max_length=30, blank=True, db_index=True,
+                            help_text='รหัสอ้างอิง เช่น FF-0001 (จาก Market List)')
     name = models.CharField('ชื่อ', max_length=200)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='items', verbose_name='หมวดหมู่')
     subcategory = models.ForeignKey(Subcategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='items', verbose_name='หมวดหมู่ย่อย')

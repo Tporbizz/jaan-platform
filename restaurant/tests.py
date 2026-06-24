@@ -166,3 +166,61 @@ class MenuImageUploadTest(TestCase):
         menu = MenuItem.objects.get(name='ผัดไทยกุ้งแม่น้ำ')
         self.assertTrue(menu.image)
         menu.image.delete(save=False)  # cleanup ไฟล์ทดสอบ
+
+
+class MarketListImportTest(TestCase):
+    """นำเข้า Market List จริง + แก้สูตรด้วยวัตถุดิบที่นำเข้า"""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='ml')
+
+    def test_import_creates_items_with_code_and_cost(self):
+        from django.core.management import call_command
+        from restaurant.models import Item
+        call_command('import_market_list', tenant=self.tenant.id, verbosity=0)
+        # ควรนำเข้าหลายร้อยรายการ
+        self.assertGreater(Item.objects.filter(tenant=self.tenant).count(), 500)
+        # ตัวอย่างจริง: ไข่ไก่ เบอร์ 3 = FF-0002
+        egg = Item.objects.filter(tenant=self.tenant, code='FF-0002').first()
+        self.assertIsNotNone(egg)
+        self.assertGreater(egg.cost_per_unit, 0)
+
+    def test_import_idempotent(self):
+        from django.core.management import call_command
+        from restaurant.models import Item
+        call_command('import_market_list', tenant=self.tenant.id, verbosity=0)
+        n1 = Item.objects.filter(tenant=self.tenant).count()
+        call_command('import_market_list', tenant=self.tenant.id, verbosity=0)
+        n2 = Item.objects.filter(tenant=self.tenant).count()
+        self.assertEqual(n1, n2)  # รันซ้ำไม่เพิ่มจำนวน
+
+
+class RecipeEditTest(TestCase):
+    def setUp(self):
+        from accounts.models import User
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='re')
+        self.user = User.objects.create_user(username='gm', password='x', tenant=self.tenant,
+                                              role='owner', department='gm')
+        self.client.force_login(self.user)
+        self.unit = Unit.objects.create(tenant=self.tenant, name='กรัม', abbreviation='g')
+        self.cat = Category.objects.create(tenant=self.tenant, name='เนื้อสัตว์')
+        self.pork = Item.objects.create(tenant=self.tenant, code='FF-0009', name='หมูบด',
+                                        category=self.cat, unit=self.unit, cost_per_unit=Decimal('0.12'))
+        from restaurant.models import Recipe
+        self.recipe = Recipe.objects.create(tenant=self.tenant, name='ผัดกะเพรา', portions=1)
+
+    def test_add_ingredient_updates_cost(self):
+        from restaurant.models import Recipe
+        r = self.client.post(f'/settings/recipes/{self.recipe.id}/add-ingredient/', {
+            'item_id': self.pork.id, 'quantity': '200', 'unit_id': self.unit.id, 'notes': '',
+        })
+        self.assertEqual(r.status_code, 302)
+        recipe = Recipe.objects.get(id=self.recipe.id)
+        self.assertEqual(recipe.ingredients.count(), 1)
+        self.assertEqual(recipe.calculate_cost(), Decimal('24.00'))  # 200 * 0.12
+
+    def test_recipe_detail_has_search_data(self):
+        resp = self.client.get(f'/settings/recipes/{self.recipe.id}/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'items-data')
+        self.assertContains(resp, 'ing-search')

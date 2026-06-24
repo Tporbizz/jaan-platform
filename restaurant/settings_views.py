@@ -451,12 +451,23 @@ def recipe_detail(request, recipe_id):
     units = Unit.objects.filter(tenant=tenant)
     menus = recipe.menu_items.all()
 
+    # ข้อมูลวัตถุดิบสำหรับช่องค้นหา (ค้นด้วยชื่อ/รหัส + auto หน่วย + พรีวิวต้นทุน)
+    items_json = [
+        {
+            'id': it.id, 'code': it.code, 'name': it.name,
+            'cost': float(it.cost_per_unit), 'unit_id': it.unit_id,
+            'unit': it.unit.abbreviation,
+        }
+        for it in items
+    ]
+
     context = {
         'recipe': recipe,
         'ingredients': ingredients,
         'items': items,
         'units': units,
         'menus': menus,
+        'items_json': items_json,
         'total_cost': recipe.calculate_cost(),
     }
     return render(request, 'settings/recipe_detail.html', context)

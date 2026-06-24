@@ -117,36 +117,38 @@
                 </tbody>
             </table>
 
-            <!-- Add Ingredient Form -->
-            <form method="post" action="{% url 'settings:recipe_add_ingredient' recipe_id=recipe.id %}" class="border-t border-cream-100 pt-4">
+            <!-- Add Ingredient Form — ช่องค้นหา + auto หน่วย + พรีวิวต้นทุนสด -->
+            <form method="post" action="{% url 'settings:recipe_add_ingredient' recipe_id=recipe.id %}" class="border-t border-cream-100 pt-4" id="add-ing-form">
                 {% csrf_token %}
-                <div class="text-xs font-semibold text-gray-500 mb-2">เพิ่มวัตถุดิบ</div>
+                <div class="text-xs font-semibold text-gray-500 mb-2">เพิ่มวัตถุดิบ — พิมพ์ค้นหาชื่อหรือรหัส</div>
                 <div class="flex gap-2 items-end flex-wrap">
-                    <div class="flex-1 min-w-[180px]">
-                        <select name="item_id" class="input" required>
-                            <option value="">-- เลือกวัตถุดิบ --</option>
-                            {% for item in items %}
-                            <option value="{{ item.id }}" data-unit="{{ item.unit.id }}">{{ item.name }} (฿{{ item.cost_per_unit }}/{{ item.unit.abbreviation }})</option>
-                            {% endfor %}
-                        </select>
+                    <div class="flex-1 min-w-[220px] relative">
+                        <input type="text" id="ing-search" class="input" autocomplete="off"
+                               placeholder="ค้นหาวัตถุดิบ เช่น หมูบด, FF-0009..." required>
+                        <input type="hidden" name="item_id" id="ing-item-id">
+                        <div id="ing-results" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-cream-200 rounded-xl shadow-lg max-h-72 overflow-y-auto"></div>
                     </div>
                     <div class="w-24">
-                        <input type="number" name="quantity" class="input" placeholder="ปริมาณ" step="0.001" required>
+                        <input type="number" name="quantity" id="ing-qty" class="input" placeholder="ปริมาณ" step="0.001" required>
                     </div>
-                    <div class="w-32">
+                    <div class="w-28">
                         <select name="unit_id" id="add-unit" class="input" required>
                             {% for u in units %}
-                            <option value="{{ u.id }}">{{ u.name }} ({{ u.abbreviation }})</option>
+                            <option value="{{ u.id }}">{{ u.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="w-32">
-                        <input type="text" name="notes" class="input" placeholder="หมายเหตุ">
+                    <div class="w-28 text-right">
+                        <div class="text-[10px] text-gray-400 uppercase">ต้นทุน</div>
+                        <div id="line-cost" class="text-lg font-extrabold text-gray-800">฿0.00</div>
                     </div>
+                    <input type="text" name="notes" class="input w-28" placeholder="หมายเหตุ">
                     <button type="submit" class="btn btn-primary">+ เพิ่ม</button>
                 </div>
             </form>
         </div>
+
+        {{ items_json|json_script:"items-data" }}
 
         <!-- Recipe Info / Edit -->
         <div class="card">
@@ -177,11 +179,58 @@
 </div>
 
 <script>
-// Auto-select unit when item is selected
-document.querySelector('select[name="item_id"]').addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    const unitId = opt.dataset.unit;
-    if (unitId) document.getElementById('add-unit').value = unitId;
+const ITEMS = JSON.parse(document.getElementById('items-data').textContent);
+const search = document.getElementById('ing-search');
+const results = document.getElementById('ing-results');
+const hiddenId = document.getElementById('ing-item-id');
+const unitSel = document.getElementById('add-unit');
+const qtyInput = document.getElementById('ing-qty');
+const lineCost = document.getElementById('line-cost');
+let selected = null;
+
+function renderResults(q) {
+    q = q.trim().toLowerCase();
+    if (!q) { results.classList.add('hidden'); return; }
+    const matches = ITEMS.filter(it =>
+        it.name.toLowerCase().includes(q) || (it.code || '').toLowerCase().includes(q)
+    ).slice(0, 25);
+    if (!matches.length) { results.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400">ไม่พบวัตถุดิบ</div>'; results.classList.remove('hidden'); return; }
+    results.innerHTML = matches.map(it =>
+        `<div class="ing-opt px-3 py-2 hover:bg-cream-50 cursor-pointer flex justify-between gap-2" data-id="${it.id}">
+            <span class="text-sm font-semibold text-gray-800">${it.name}</span>
+            <span class="text-xs text-gray-400 whitespace-nowrap">${it.code || ''} · ฿${it.cost}/${it.unit}</span>
+        </div>`
+    ).join('');
+    results.classList.remove('hidden');
+    results.querySelectorAll('.ing-opt').forEach(el => el.addEventListener('click', () => pick(parseInt(el.dataset.id))));
+}
+
+function pick(id) {
+    selected = ITEMS.find(it => it.id === id);
+    if (!selected) return;
+    search.value = selected.name;
+    hiddenId.value = selected.id;
+    // auto หน่วยตามวัตถุดิบ
+    if (selected.unit_id) unitSel.value = selected.unit_id;
+    results.classList.add('hidden');
+    updateCost();
+    qtyInput.focus();
+}
+
+function updateCost() {
+    const qty = parseFloat(qtyInput.value) || 0;
+    const cost = selected ? selected.cost * qty : 0;
+    lineCost.textContent = '฿' + cost.toFixed(2);
+}
+
+search.addEventListener('input', () => { hiddenId.value = ''; selected = null; updateCost(); renderResults(search.value); });
+search.addEventListener('focus', () => renderResults(search.value));
+qtyInput.addEventListener('input', updateCost);
+document.addEventListener('click', (e) => { if (!e.target.closest('#ing-search') && !e.target.closest('#ing-results')) results.classList.add('hidden'); });
+
+// กันส่งฟอร์มถ้ายังไม่เลือกวัตถุดิบจากรายการ
+document.getElementById('add-ing-form').addEventListener('submit', (e) => {
+    if (!hiddenId.value) { e.preventDefault(); alert('กรุณาเลือกวัตถุดิบจากรายการค้นหา'); }
 });
 </script>
 {% endblock %}
