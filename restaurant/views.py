@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import (
-    Item, LotBatch, POItem, PriceHistory, PurchaseOrder,
+    Category, Item, LotBatch, POItem, PriceHistory, PurchaseOrder,
     StockMovement, Supplier, WasteRecord, KPITarget, MenuItem,
 )
 
@@ -29,10 +29,29 @@ def stock_dashboard(request):
     below_min = items.filter(current_stock__lt=F('min_stock')).order_by('current_stock')
     out_of_stock = items.filter(current_stock__lte=0)
 
-    # Stock value
-    total_stock_value = Decimal('0')
-    for item in items:
-        total_stock_value += item.stock_value
+    # Stock value — aggregate ครั้งเดียว (กัน N+1 กับวัตถุดิบหลายร้อยรายการ)
+    from django.db.models import DecimalField, ExpressionWrapper, Q
+    total_stock_value = items.aggregate(
+        v=Sum(ExpressionWrapper(F('current_stock') * F('cost_per_unit'),
+                                output_field=DecimalField(max_digits=14, decimal_places=2)))
+    )['v'] or Decimal('0')
+
+    # ค้นหา + กรองหมวด สำหรับตารางวัตถุดิบ (รองรับ 600+ รายการ)
+    q = request.GET.get('q', '').strip()
+    cat_id = request.GET.get('cat', '').strip()
+    status = request.GET.get('status', '').strip()
+    item_qs = items.select_related('category', 'unit')
+    if q:
+        item_qs = item_qs.filter(Q(name__icontains=q) | Q(code__icontains=q))
+    if cat_id:
+        item_qs = item_qs.filter(category_id=cat_id)
+    if status == 'low':
+        item_qs = item_qs.filter(current_stock__lt=F('min_stock'))
+    elif status == 'out':
+        item_qs = item_qs.filter(current_stock__lte=0)
+    item_qs = item_qs.order_by('category__name', 'name')
+    item_match_count = item_qs.count()
+    item_categories = Category.objects.filter(tenant=tenant).order_by('name')
 
     # Expiring lots
     expiring_3d = LotBatch.objects.filter(
@@ -87,7 +106,12 @@ def stock_dashboard(request):
         'menu_count': menu_items.count(),
         'pending_pos': pending_pos,
         'pending_po_count': pending_pos.count(),
-        'items': items[:20],
+        'items': item_qs[:200],
+        'item_match_count': item_match_count,
+        'item_categories': item_categories,
+        'q': q,
+        'cat_id': cat_id,
+        'status': status,
     }
     return render(request, 'restaurant/stock_dashboard.html', context)
 

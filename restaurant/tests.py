@@ -224,3 +224,39 @@ class RecipeEditTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'items-data')
         self.assertContains(resp, 'ing-search')
+
+
+class StockSearchTest(TestCase):
+    """หน้าสต็อกค้นหา/กรองได้ (รองรับวัตถุดิบหลายร้อยรายการ)"""
+
+    def setUp(self):
+        from accounts.models import User
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='ss2')
+        self.user = User.objects.create_user(username='gm', password='x', tenant=self.tenant,
+                                              role='owner', department='gm')
+        self.client.force_login(self.user)
+        self.unit = Unit.objects.create(tenant=self.tenant, name='กรัม', abbreviation='g')
+        self.meat = Category.objects.create(tenant=self.tenant, name='เนื้อสัตว์')
+        self.veg = Category.objects.create(tenant=self.tenant, name='ผัก')
+        Item.objects.create(tenant=self.tenant, code='FF-0009', name='หมูบด', category=self.meat,
+                            unit=self.unit, cost_per_unit=Decimal('0.12'),
+                            current_stock=Decimal('5'), min_stock=Decimal('10'))
+        Item.objects.create(tenant=self.tenant, code='FF-0016', name='คะน้า', category=self.veg,
+                            unit=self.unit, cost_per_unit=Decimal('0.08'), current_stock=Decimal('50'))
+
+    def test_search_by_name(self):
+        r = self.client.get('/stock/?q=หมู')
+        self.assertContains(r, 'หมูบด')
+        self.assertNotContains(r, '>คะน้า<')
+
+    def test_search_by_code(self):
+        r = self.client.get('/stock/?q=FF-0009')
+        self.assertEqual(r.context['item_match_count'], 1)
+
+    def test_filter_status_low(self):
+        r = self.client.get('/stock/?status=low')
+        self.assertEqual(r.context['item_match_count'], 1)  # เฉพาะหมูบด (5<10)
+
+    def test_filter_category(self):
+        r = self.client.get(f'/stock/?cat={self.veg.id}')
+        self.assertEqual(r.context['item_match_count'], 1)  # เฉพาะคะน้า

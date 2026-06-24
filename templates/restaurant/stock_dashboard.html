@@ -121,10 +121,31 @@
 
         <!-- Items Table -->
         <div class="card">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 class="font-bold text-gray-800">รายการวัตถุดิบ</h3>
-                <span class="text-xs text-gray-400">แสดง {{ items|length }} รายการ</span>
+                <span class="text-xs text-gray-400">พบ {{ item_match_count }} รายการ{% if item_match_count > 200 %} (แสดง 200 แรก){% endif %}</span>
             </div>
+
+            <!-- ค้นหา + กรอง -->
+            <form method="get" class="flex flex-wrap gap-2 mb-4" id="stock-filter">
+                <input type="text" name="q" value="{{ q }}" placeholder="ค้นหาชื่อ หรือ รหัส (เช่น หมูบด, FF-0009)"
+                       class="flex-1 min-w-[220px] border border-cream-200 rounded-xl px-4 py-2 text-sm" autocomplete="off">
+                <select name="cat" class="border border-cream-200 rounded-xl px-3 py-2 text-sm" onchange="document.getElementById('stock-filter').submit()">
+                    <option value="">ทุกหมวด</option>
+                    {% for c in item_categories %}
+                    <option value="{{ c.id }}" {% if cat_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="status" class="border border-cream-200 rounded-xl px-3 py-2 text-sm" onchange="document.getElementById('stock-filter').submit()">
+                    <option value="">ทุกสถานะ</option>
+                    <option value="low" {% if status == 'low' %}selected{% endif %}>ต่ำกว่าขั้นต่ำ</option>
+                    <option value="out" {% if status == 'out' %}selected{% endif %}>หมดสต็อก</option>
+                </select>
+                <button type="submit" class="bg-gray-900 text-white text-sm font-semibold rounded-xl px-5">ค้นหา</button>
+                {% if q or cat_id or status %}
+                <a href="{% url 'restaurant:stock_dashboard' %}" class="text-sm text-gray-400 px-3 flex items-center">ล้าง</a>
+                {% endif %}
+            </form>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -142,7 +163,7 @@
                     <tbody class="divide-y divide-cream-100">
                         {% for item in items %}
                         <tr class="hover:bg-cream-50 transition">
-                            <td class="py-3 font-medium text-gray-800">{{ item.name }}</td>
+                            <td class="py-3 font-medium text-gray-800">{{ item.name }}{% if item.code %} <span class="text-xs text-gray-300">{{ item.code }}</span>{% endif %}</td>
                             <td class="py-3 text-gray-500">{{ item.category.name|default:"—" }}</td>
                             <td class="py-3 text-right font-semibold">{{ item.current_stock|floatformat:1 }} {{ item.unit.abbreviation }}</td>
                             <td class="py-3 text-right text-gray-400">{{ item.min_stock|floatformat:1 }}</td>
