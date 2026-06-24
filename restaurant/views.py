@@ -7,16 +7,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from accounts.decorators import require_stock
 from .models import (
     Category, Item, LotBatch, POItem, PriceHistory, PurchaseOrder,
     StockMovement, Supplier, WasteRecord, KPITarget, MenuItem,
 )
 
 
+@require_stock
 def stock_dashboard(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     tenant = request.user.tenant
     today = timezone.localdate()
 
@@ -120,10 +119,8 @@ def stock_dashboard(request):
 # Phase 2.1 — Smart Reorder
 # =============================================================================
 
+@require_stock
 def reorder_list(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     tenant = request.user.tenant
     if not tenant:
         return render(request, 'restaurant/reorder_list.html', {'no_tenant': True})
@@ -164,11 +161,9 @@ def reorder_list(request):
     return render(request, 'restaurant/reorder_list.html', context)
 
 
+@require_stock
 @require_POST
 def create_pos_from_reorder(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
-
     tenant = request.user.tenant
     if not tenant:
         return JsonResponse({'error': 'No tenant'}, status=400)
@@ -248,10 +243,8 @@ def create_pos_from_reorder(request):
 # Phase 2.2 — Goods Receipt
 # =============================================================================
 
+@require_stock
 def goods_receipt(request, po_id):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     tenant = request.user.tenant
     po = get_object_or_404(PurchaseOrder, id=po_id, tenant=tenant)
     po_items = po.items.select_related('item', 'item__unit')

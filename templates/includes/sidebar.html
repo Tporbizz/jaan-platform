@@ -1,24 +1,52 @@
-{# Sidebar — text + color bar, no emoji. Use: include 'includes/sidebar.html' with active='dashboard' #}
-<aside class="w-[72px] flex flex-col items-center py-5 gap-1 fixed h-full z-10 bg-cream-50 border-r border-cream-200">
+{# Sidebar — แสดงเมนูตามหน้าที่ (role). Use: include 'includes/sidebar.html' with active='dashboard' #}
+<aside class="w-[72px] flex flex-col items-center py-5 gap-1 fixed h-full z-10 bg-cream-50 border-r border-cream-200 overflow-y-auto">
     <!-- Logo -->
-    <a href="/" class="w-11 h-11 bg-jaan-400 rounded-2xl flex items-center justify-center mb-3 text-white text-xs font-extrabold tracking-tight">
+    <a href="{{ user.home_url|default:'/' }}" class="w-11 h-11 bg-jaan-400 rounded-2xl flex items-center justify-center mb-3 text-white text-xs font-extrabold tracking-tight">
         จาน
     </a>
 
+    {% if user.can_access_back_office %}
     <a href="/dashboard/" class="sidebar-item {% if active == 'dashboard' %}active{% endif %}" title="หน้าหลัก">
         <span class="sidebar-bar"></span><span class="sidebar-label">หน้าหลัก</span>
     </a>
+    {% endif %}
+
+    {% if user.can_access_pos %}
     <a href="/pos/" class="sidebar-item {% if active == 'pos' %}active{% endif %}" title="ขายหน้าร้าน">
         <span class="sidebar-bar"></span><span class="sidebar-label">POS</span>
     </a>
+    {% endif %}
+
+    {% if user.can_access_kitchen %}
+    <a href="/pos/kitchen/" class="sidebar-item {% if active == 'kitchen' %}active{% endif %}" title="จอครัวรับออเดอร์">
+        <span class="sidebar-bar"></span><span class="sidebar-label">ครัว</span>
+    </a>
+    {% endif %}
+
+    {% if user.can_access_pos %}
     <a href="/pos/campaign/" class="sidebar-item {% if active == 'campaign' %}active{% endif %}" title="เชียร์ขาย">
         <span class="sidebar-bar"></span><span class="sidebar-label">เชียร์</span>
     </a>
-    <a href="/stock/" class="sidebar-item {% if active == 'stock' %}active{% endif %}" title="คลังสินค้า">
+    {% endif %}
+
+    {% if user.can_access_inventory %}
+    <a href="/stock/" class="sidebar-item {% if active == 'stock' %}active{% endif %}" title="คลังวัตถุดิบ">
         <span class="sidebar-bar"></span><span class="sidebar-label">คลัง</span>
     </a>
-    <a href="/reports/pricing/" class="sidebar-item {% if active == 'reports' %}active{% endif %}" title="รายงาน">
+    <a href="/procurement/reorder/" class="sidebar-item {% if active == 'procurement' %}active{% endif %}" title="จัดซื้อ">
+        <span class="sidebar-bar"></span><span class="sidebar-label">จัดซื้อ</span>
+    </a>
+    <a href="/settings/recipes/" class="sidebar-item {% if active == 'recipes' %}active{% endif %}" title="สูตรอาหาร">
+        <span class="sidebar-bar"></span><span class="sidebar-label">สูตร</span>
+    </a>
+    {% endif %}
+
+    {% if user.can_access_back_office %}
+    <a href="/reports/pricing/" class="sidebar-item {% if active == 'reports' %}active{% endif %}" title="รายงาน/P&L">
         <span class="sidebar-bar"></span><span class="sidebar-label">รายงาน</span>
+    </a>
+    <a href="/hr/" class="sidebar-item {% if active == 'hr' %}active{% endif %}" title="พนักงาน">
+        <span class="sidebar-bar"></span><span class="sidebar-label">พนักงาน</span>
     </a>
     <a href="/events/" class="sidebar-item {% if active == 'events' %}active{% endif %}" title="อีเวนต์">
         <span class="sidebar-bar"></span><span class="sidebar-label">อีเวนต์</span>
@@ -26,26 +54,26 @@
     <a href="/hotel/" class="sidebar-item {% if active == 'hotel' %}active{% endif %}" title="โรงแรม">
         <span class="sidebar-bar"></span><span class="sidebar-label">โรงแรม</span>
     </a>
-    <a href="/hr/" class="sidebar-item {% if active == 'hr' %}active{% endif %}" title="พนักงาน">
-        <span class="sidebar-bar"></span><span class="sidebar-label">พนักงาน</span>
-    </a>
     <a href="/ai/" class="sidebar-item {% if active == 'ai' %}active{% endif %}" title="AI สร้างสรรค์">
         <span class="sidebar-bar"></span><span class="sidebar-label">AI</span>
     </a>
+    {% endif %}
 
     <div class="flex-1"></div>
 
+    {% if user.can_access_settings %}
     <a href="/settings/" class="sidebar-item {% if active == 'settings' %}active{% endif %}" title="ตั้งค่า">
         <span class="sidebar-bar"></span><span class="sidebar-label">ตั้งค่า</span>
     </a>
+    {% endif %}
     {% if user.is_superuser %}
     <a href="/admin/" class="sidebar-item {% if active == 'admin' %}active{% endif %}" title="จัดการข้อมูล (Admin)" target="_blank">
-        <span class="sidebar-bar" style="background:#ef4444;"></span><span class="sidebar-label" style="color:#ef4444;font-size:8px;">ADMIN</span>
+        <span class="sidebar-bar" style="background:#ef4444;"></span><span class="sidebar-label" style="color:#ef4444;">ADMIN</span>
     </a>
     {% endif %}
     {% if user.is_authenticated %}
-    <a href="/logout/" class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-xs font-bold" title="{{ user.first_name }}">
-        {{ user.first_name|truncatechars:1 }}
+    <a href="/logout/" class="mt-2 w-10 h-10 rounded-full bg-jaan-400 flex items-center justify-center text-white text-xs font-bold" title="ออกจากระบบ ({{ user.first_name }})">
+        {{ user.first_name|truncatechars:1|default:"U" }}
     </a>
     {% endif %}
 </aside>

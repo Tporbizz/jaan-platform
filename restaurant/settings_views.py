@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import require_gm as require_manager
+from accounts.decorators import require_stock
 from .models import Category, Item, MenuItem, Recipe, RecipeItem, Supplier, Unit
 
 
@@ -423,10 +424,8 @@ def staff_reset_password(request, staff_id):
 # Recipe Builder — สร้าง/แก้สูตรอาหาร + คำนวณต้นทุน
 # =============================================================================
 
+@require_stock
 def recipe_list(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     tenant = request.user.tenant
     recipes = Recipe.objects.filter(tenant=tenant).prefetch_related('ingredients__item', 'ingredients__unit', 'menu_items')
     items = Item.objects.filter(tenant=tenant, is_active=True).select_related('unit')
@@ -440,10 +439,8 @@ def recipe_list(request):
     return render(request, 'settings/recipe_list.html', context)
 
 
+@require_stock
 def recipe_detail(request, recipe_id):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     tenant = request.user.tenant
     recipe = get_object_or_404(Recipe, id=recipe_id, tenant=tenant)
     ingredients = recipe.ingredients.select_related('item', 'item__unit', 'unit')
@@ -473,7 +470,7 @@ def recipe_detail(request, recipe_id):
     return render(request, 'settings/recipe_detail.html', context)
 
 
-@require_manager
+@require_stock
 @require_POST
 def recipe_save(request):
     tenant = request.user.tenant
@@ -492,7 +489,7 @@ def recipe_save(request):
     return redirect('settings:recipe_detail', recipe_id=recipe.id)
 
 
-@require_manager
+@require_stock
 @require_POST
 def recipe_add_ingredient(request, recipe_id):
     tenant = request.user.tenant
@@ -515,7 +512,7 @@ def recipe_add_ingredient(request, recipe_id):
     return redirect('settings:recipe_detail', recipe_id=recipe.id)
 
 
-@require_manager
+@require_stock
 @require_POST
 def recipe_remove_ingredient(request, recipe_id, ingredient_id):
     tenant = request.user.tenant
@@ -525,7 +522,7 @@ def recipe_remove_ingredient(request, recipe_id, ingredient_id):
     return redirect('settings:recipe_detail', recipe_id=recipe.id)
 
 
-@require_manager
+@require_stock
 def recipe_api_cost(request, recipe_id):
     """API: คำนวณต้นทุนสูตร (JSON)"""
     tenant = request.user.tenant

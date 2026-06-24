@@ -100,8 +100,9 @@ class StockDepletionTest(TestCase):
 
     def test_daily_sales_record_created(self):
         from reports.models import DailySalesRecord
-        order = self._make_paid_order(qty=2)
-        rec = DailySalesRecord.objects.get(tenant=self.tenant, date=order.opened_at.date())
+        self._make_paid_order(qty=2)
+        # ระบบเก็บยอดขายตามวันที่ "ไทย" (business date) ไม่ใช่ UTC
+        rec = DailySalesRecord.objects.get(tenant=self.tenant, date=timezone.localdate())
         self.assertEqual(rec.total_revenue, Decimal('160'))
         self.assertEqual(rec.food_cost_actual, Decimal('160.00'))
 
@@ -277,3 +278,33 @@ class OrderCartFlowTest(TestCase):
                          data=json.dumps({'delta': -1}), content_type='application/json')
         oi.refresh_from_db()
         self.assertTrue(oi.is_voided)
+
+
+class RoleAccessTest(TestCase):
+    """เมนู/สิทธิ์ตามหน้าที่ — FB ใช้แค่ POS, ครัวจัดการ stock/สูตร, หลังบ้านเห็นหมด"""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='role')
+
+    def _user(self, dept, role='staff'):
+        return User.objects.create_user(username=f'u_{dept}_{role}', password='x',
+                                        tenant=self.tenant, department=dept, role=role)
+
+    def test_fb_only_pos(self):
+        self.client.force_login(self._user('fb'))
+        self.assertEqual(self.client.get('/pos/tables/').status_code, 200)
+        self.assertEqual(self.client.get('/stock/').status_code, 403)
+        self.assertEqual(self.client.get('/settings/recipes/').status_code, 403)
+        self.assertEqual(self.client.get('/pos/kitchen/').status_code, 403)
+
+    def test_kitchen_stock_and_recipes(self):
+        self.client.force_login(self._user('kt'))
+        self.assertEqual(self.client.get('/pos/kitchen/').status_code, 200)
+        self.assertEqual(self.client.get('/stock/').status_code, 200)
+        self.assertEqual(self.client.get('/settings/recipes/').status_code, 200)
+        self.assertEqual(self.client.get('/pos/tables/').status_code, 403)  # ครัวไม่เข้า POS
+
+    def test_owner_sees_everything(self):
+        self.client.force_login(self._user('gm', role='owner'))
+        for url in ['/dashboard/', '/pos/tables/', '/pos/kitchen/', '/stock/', '/settings/recipes/']:
+            self.assertEqual(self.client.get(url).status_code, 200, url)

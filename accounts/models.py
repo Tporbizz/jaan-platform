@@ -116,10 +116,31 @@ class User(AbstractUser):
 
     @property
     def can_access_stock(self):
-        """Manager, GM เข้าถึง Stock/Reports"""
-        return self.department in (self.Department.MANAGER, self.Department.GM) or self.is_manager
+        """ครัว (KT), Manager, GM เข้าถึง คลัง/สูตร/จัดซื้อ (งานหลังครัว)"""
+        return self.department in (self.Department.KT, self.Department.MANAGER, self.Department.GM) or self.is_manager
+
+    # alias ความหมายชัดเจน — งานครัวหลังบ้าน (คลัง+สูตร+จัดซื้อ)
+    @property
+    def can_access_inventory(self):
+        return self.can_access_stock
+
+    @property
+    def can_access_back_office(self):
+        """ผู้จัดการ/GM เท่านั้น — Dashboard, รายงาน, พนักงาน, อีเวนต์, โรงแรม, AI"""
+        return self.is_manager or self.is_gm
 
     @property
     def can_access_settings(self):
         """GM เท่านั้นเข้าถึง Settings, P&L, Food Cost"""
         return self.is_gm or self.role == self.Role.OWNER
+
+    @property
+    def home_url(self):
+        """หน้าแรกตามหน้าที่ — FB ไป POS, ครัวไปจอครัว, ผู้จัดการไป Dashboard"""
+        if self.can_access_back_office:
+            return '/dashboard/'
+        if self.is_kitchen:
+            return '/pos/kitchen/'
+        if self.can_access_pos:
+            return '/pos/tables/'
+        return '/pos/'

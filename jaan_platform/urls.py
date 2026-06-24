@@ -15,7 +15,7 @@ def health_check(request):
 
 def landing(request):
     if request.user.is_authenticated:
-        return redirect('dashboard')
+        return redirect(request.user.home_url)
     return redirect('login')
 
 
@@ -52,6 +52,9 @@ def dashboard_kpis(request):
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
+    # หน้าหลัง (Dashboard มียอดขาย/P&L) — เฉพาะผู้จัดการ/GM; คนอื่นพาไปหน้าที่ของตัวเอง
+    if not request.user.can_access_back_office:
+        return redirect(request.user.home_url)
 
     tenant = request.user.tenant
     today = timezone.localdate()
@@ -107,7 +110,7 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return redirect(request.GET.get('next', 'dashboard'))
+            return redirect(request.GET.get('next') or user.home_url)
         error = 'Username/Email หรือ Password ไม่ถูกต้อง'
     return render(request, 'login.html', {'error': error})
 
