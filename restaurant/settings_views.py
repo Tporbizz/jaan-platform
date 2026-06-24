@@ -258,6 +258,8 @@ def menu_save(request):
     menu.recipe_id = request.POST.get('recipe') or None
     menu.is_available = request.POST.get('is_available') == 'on'
     menu.sort_order = int(request.POST.get('sort_order', '0') or '0')
+    if request.FILES.get('image'):
+        menu.image = request.FILES['image']
     menu.save()
     return redirect('settings:menu_list')
 

@@ -9,6 +9,8 @@
     .menu-btn:hover { border-color: #d4a017; background: #fdf8f3; }
     .menu-btn:active { transform: scale(0.97); }
     .menu-campaign { border-color: #EBB520; border-width: 2px; background: #fffdf5; box-shadow: 0 2px 8px rgba(235,181,32,0.18); }
+    .menu-img { width: 100%; height: 70px; border-radius: 0.6rem; object-fit: cover; margin-bottom: 0.4rem; display: block; }
+    .menu-img-ph { width: 100%; height: 70px; border-radius: 0.6rem; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; color: #c9a86a; background: linear-gradient(135deg,#f9f0e5,#f0e0cc); }
     .cat-tab { padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
     .cat-tab.active { background: #1a1a2e; color: white; }
     .cat-tab:not(.active) { background: white; color: #666; }
@@ -87,6 +89,7 @@
             {% for cat_name, items in menu_by_cat.items %}
             {% for mi in items %}
             <div class="menu-btn menu-item {% if mi.campaign_commission %}menu-campaign{% endif %}" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }})">
+                {% if mi.image %}<img src="{{ mi.image.url }}" class="menu-img" alt="">{% else %}<div class="menu-img-ph">{{ mi.name|first }}</div>{% endif %}
                 {% if mi.campaign_commission %}
                 <div class="text-[11px] font-extrabold text-white bg-jaan-600 rounded-md px-1.5 py-0.5 inline-block mb-1">เชียร์วันนี้ +฿{{ mi.campaign_commission|floatformat:0 }}/จาน</div>
                 {% endif %}

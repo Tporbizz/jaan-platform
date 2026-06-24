@@ -133,3 +133,36 @@ class MonthlyPLTest(TestCase):
         rollup_monthly_pl(tenant, 2, 2027)
         rollup_monthly_pl(tenant, 2, 2027)
         self.assertEqual(MonthlyPL.objects.filter(tenant=tenant, month=2, year=2027).count(), 1)
+
+
+class MenuImageUploadTest(TestCase):
+    """อัปโหลดรูปเมนูผ่านหน้าจัดการเมนู"""
+
+    def setUp(self):
+        from accounts.models import User
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='img')
+        self.owner = User.objects.create_user(
+            username='owner', password='x', tenant=self.tenant,
+            role='owner', department='gm',
+        )
+        self.client.force_login(self.owner)
+
+    def test_menu_save_accepts_image(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from restaurant.models import MenuItem
+
+        buf = io.BytesIO()
+        Image.new('RGB', (10, 10), (200, 150, 50)).save(buf, 'JPEG')
+        upload = SimpleUploadedFile('dish.jpg', buf.getvalue(), content_type='image/jpeg')
+
+        r = self.client.post('/settings/menu/save/', {
+            'name': 'ผัดไทยกุ้งแม่น้ำ', 'selling_price': '550',
+            'menu_category': 'single_dish', 'sort_order': '0',
+            'image': upload,
+        })
+        self.assertEqual(r.status_code, 302)
+        menu = MenuItem.objects.get(name='ผัดไทยกุ้งแม่น้ำ')
+        self.assertTrue(menu.image)
+        menu.image.delete(save=False)  # cleanup ไฟล์ทดสอบ
