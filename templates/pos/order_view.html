@@ -48,7 +48,7 @@
             <div class="flex gap-3 overflow-x-auto pb-2">
                 {% for s in suggestions %}
                 <div class="suggest-card flex-shrink-0 w-[160px]"
-                     onclick="addItem({{ s.menu_item.id }})">
+                     onclick="addItem({{ s.menu_item.id }}, '{{ s.menu_item.name|escapejs }}')">
                     <div class="text-sm font-semibold text-gray-800">{{ s.menu_item.name }}</div>
                     <div class="text-xs text-gray-500 mt-0.5">{{ s.reason }}</div>
                     <div class="flex items-center justify-between mt-2">
@@ -88,7 +88,7 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="menu-grid">
             {% for cat_name, items in menu_by_cat.items %}
             {% for mi in items %}
-            <div class="menu-btn menu-item {% if mi.campaign_commission %}menu-campaign{% endif %}" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }})">
+            <div class="menu-btn menu-item {% if mi.campaign_commission %}menu-campaign{% endif %}" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }}, '{{ mi.name|escapejs }}')">
                 {% if mi.image %}<img src="{{ mi.image.url }}" class="menu-img" alt="">{% else %}<div class="menu-img-ph">{{ mi.name|first }}</div>{% endif %}
                 {% if mi.campaign_commission %}
                 <div class="text-[11px] font-extrabold text-white bg-jaan-600 rounded-md px-1.5 py-0.5 inline-block mb-1">เชียร์วันนี้ +฿{{ mi.campaign_commission|floatformat:0 }}/จาน</div>
@@ -105,84 +105,16 @@
         </div>
     </div>
 
-    <!-- Right: Cart Sidebar -->
+    <!-- Right: Cart Sidebar — อัปเดตเฉพาะส่วนนี้ ไม่ reload ทั้งหน้า -->
     <div class="w-[360px] bg-white border-l border-cream-200 flex flex-col" style="height: 100vh; position: sticky; top: 0;">
-        <!-- Cart Header -->
-        <div class="p-4 border-b border-cream-100">
-            <div class="flex items-center justify-between">
-                <h3 class="font-bold text-gray-800">รายการสั่ง</h3>
-                <span class="text-xs text-gray-400" id="item-count">{{ order_items.count }} รายการ</span>
-            </div>
-        </div>
-
-        <!-- Cart Items -->
-        <div class="flex-1 overflow-y-auto p-4" id="cart-items">
-            {% for oi in order_items %}
-            <div class="cart-item" data-item-id="{{ oi.id }}">
-                <div class="flex-1">
-                    <div class="text-sm font-medium text-gray-800">
-                        {{ oi.menu_item.name }}
-                        {% if oi.menu_item.prep_station == 'bar' %}
-                        <span class="status-badge bg-purple-100 text-purple-700 ml-1">บาร์</span>
-                        {% else %}
-                        <span class="status-badge bg-orange-100 text-orange-700 ml-1">ครัว</span>
-                        {% endif %}
-                    </div>
-                    {% if oi.special_request %}
-                    <div class="text-xs text-orange-500">{{ oi.special_request }}</div>
-                    {% endif %}
-                    <div class="text-xs text-gray-400">
-                        ฿{{ oi.unit_price|floatformat:0 }} x {{ oi.quantity }}
-                        <span class="status-badge ml-1
-                            {% if oi.status == 'pending' %}bg-yellow-100 text-yellow-700
-                            {% elif oi.status == 'sent' %}bg-blue-100 text-blue-700
-                            {% elif oi.status == 'ready' %}bg-green-100 text-green-700
-                            {% elif oi.status == 'served' %}bg-gray-100 text-gray-500
-                            {% endif %}">
-                            {{ oi.get_status_display }}
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-sm font-bold">฿{{ oi.line_total|floatformat:0 }}</div>
-                    {% if oi.status == 'pending' %}
-                    <button onclick="voidItem({{ oi.id }})" class="text-xs text-red-400 hover:text-red-600 mt-0.5">ยกเลิก</button>
-                    {% endif %}
-                </div>
-            </div>
-            {% empty %}
-            <div class="text-center py-12 text-gray-300">
-                <div class="text-sm">ยังไม่มีรายการ</div>
-            </div>
-            {% endfor %}
-        </div>
-
-        <!-- Cart Footer -->
-        <div class="p-4 border-t border-cream-200 bg-cream-50">
-            <div class="flex justify-between text-sm mb-1">
-                <span class="text-gray-500">ยอดรวม</span>
-                <span class="font-bold text-lg" id="subtotal">฿{{ order.subtotal|floatformat:0 }}</span>
-            </div>
-            <div class="flex justify-between text-xs text-gray-400 mb-3">
-                <span>เฉลี่ย/คน</span>
-                <span>฿{{ order.avg_check|floatformat:0 }}</span>
-            </div>
-
-            <div class="flex gap-2">
-                <button onclick="sendToKitchen()"
-                    class="flex-1 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                    id="btn-send"
-                    {% if not has_pending %}disabled{% endif %}>
-                    {% if has_pending %}ส่งครัว{% else %}ส่งแล้ว — รอสั่งเพิ่ม{% endif %}
-                </button>
-                <a href="/pos/payment/{{ order.id }}/"
-                    class="flex-1 py-3 bg-jaan-400 text-white font-semibold rounded-xl hover:bg-jaan-500 transition text-sm text-center">
-                    เก็บเงิน
-                </a>
-            </div>
+        <div id="cart-region" class="flex flex-col flex-1 min-h-0">
+            {% include 'pos/_order_cart.html' %}
         </div>
     </div>
 </div>
+
+<!-- toast แจ้งเตือนสั้น ๆ ตอนเพิ่มเมนู -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-xl font-semibold text-sm shadow-lg opacity-0 pointer-events-none transition-opacity z-50"></div>
 {% endblock %}
 
 {% block extra_js %}
@@ -198,7 +130,23 @@ function filterCat(cat, el) {
     });
 }
 
-function addItem(menuItemId) {
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 1400);
+}
+
+// รีเฟรชเฉพาะตะกร้าด้านขวา — เมนูซ้าย/หมวด/ตำแหน่งจอ ไม่ขยับ
+function refreshCart() {
+    return fetch(`/pos/order/${orderId}/cart/`)
+        .then(r => r.text())
+        .then(html => { document.getElementById('cart-region').innerHTML = html; });
+}
+
+function addItem(menuItemId, name) {
     fetch(`/pos/order/${orderId}/add/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
@@ -206,23 +154,28 @@ function addItem(menuItemId) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.ok) {
-            window.location.reload();
-        }
+        if (data.ok) { refreshCart(); showToast('เพิ่ม ' + (name || 'รายการ') + ' แล้ว'); }
     });
 }
 
+function changeQty(itemId, delta) {
+    fetch(`/pos/order/${orderId}/qty/${itemId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ delta }),
+    })
+    .then(r => r.json())
+    .then(data => { if (data.ok) refreshCart(); });
+}
+
 function voidItem(itemId) {
-    if (!confirm('ยกเลิกรายการนี้?')) return;
     fetch(`/pos/order/${orderId}/void/${itemId}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({ reason: 'ลูกค้าเปลี่ยนใจ' }),
     })
     .then(r => r.json())
-    .then(data => {
-        if (data.ok) window.location.reload();
-    });
+    .then(data => { if (data.ok) refreshCart(); });
 }
 
 function addCustomItem() {
@@ -237,8 +190,11 @@ function addCustomItem() {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.ok) window.location.reload();
-        else alert(data.error || 'เกิดข้อผิดพลาด');
+        if (data.ok) {
+            document.getElementById('customName').value = '';
+            document.getElementById('customPrice').value = '';
+            refreshCart(); showToast('เพิ่ม ' + name + ' แล้ว');
+        } else alert(data.error || 'เกิดข้อผิดพลาด');
     });
 }
 
@@ -257,12 +213,9 @@ function sendToKitchen() {
         if (data.ok) {
             let msg = '';
             if (data.kitchen_items > 0) msg += `ส่งครัว ${data.kitchen_items} รายการ`;
-            if (data.bar_items_ready > 0) {
-                if (msg) msg += ' · ';
-                msg += `บาร์ ${data.bar_items_ready} รายการ (ready)`;
-            }
-            btn.textContent = msg || 'ส่งแล้ว';
-            setTimeout(() => window.location.reload(), 1200);
+            if (data.bar_items_ready > 0) msg += (msg ? ' · ' : '') + `บาร์ ${data.bar_items_ready} รายการ`;
+            showToast(msg || 'ส่งครัวแล้ว');
+            refreshCart();
         } else {
             alert(data.error || 'ไม่มีรายการที่รอส่งครัว');
             btn.disabled = false;

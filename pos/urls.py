@@ -18,6 +18,8 @@ urlpatterns = [
     path('order/<int:order_id>/add/', views.add_item, name='add_item'),
     path('order/<int:order_id>/add-custom/', views.add_custom_item, name='add_custom_item'),
     path('order/<int:order_id>/void/<int:item_id>/', views.void_item, name='void_item'),
+    path('order/<int:order_id>/cart/', views.order_cart, name='order_cart'),
+    path('order/<int:order_id>/qty/<int:item_id>/', views.change_item_qty, name='change_item_qty'),
     path('order/<int:order_id>/send/', views.send_to_kitchen, name='send_to_kitchen'),
     path('order/<int:order_id>/data/', views.order_data, name='order_data'),
 

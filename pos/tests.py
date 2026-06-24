@@ -225,3 +225,55 @@ class CampaignRouteSmokeTest(TestCase):
         for url in ['/pos/campaign/', '/pos/campaign/edit/']:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+
+class OrderCartFlowTest(TestCase):
+    """กดสั่งเมนูต่อเนื่อง — อัปเดตตะกร้าโดยไม่ reload + ปรับจำนวน"""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='cart')
+        self.user = User.objects.create_user(username='fb', password='x', tenant=self.tenant,
+                                              role='staff', department='fb')
+        self.client.force_login(self.user)
+        self.table = Table.objects.create(tenant=self.tenant, number='1')
+        self.menu = MenuItem.objects.create(tenant=self.tenant, name='ปีกไก่ทอด', selling_price=Decimal('180'))
+        self.order = Order.objects.create(tenant=self.tenant, table=self.table, order_number='C1',
+                                          guest_count=2, created_by=self.user)
+
+    def _add(self):
+        import json
+        return self.client.post(f'/pos/order/{self.order.id}/add/',
+                                data=json.dumps({'menu_item_id': self.menu.id, 'quantity': 1}),
+                                content_type='application/json')
+
+    def test_adding_same_menu_merges_quantity(self):
+        self._add(); self._add(); self._add()
+        items = self.order.items.filter(is_voided=False)
+        self.assertEqual(items.count(), 1)
+        self.assertEqual(items.first().quantity, 3)
+
+    def test_cart_partial_renders(self):
+        self._add()
+        r = self.client.get(f'/pos/order/{self.order.id}/cart/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'ปีกไก่ทอด')
+        self.assertContains(r, 'cart-items')
+
+    def test_change_qty_minus(self):
+        import json
+        self._add(); self._add()  # qty 2
+        oi = self.order.items.filter(is_voided=False).first()
+        r = self.client.post(f'/pos/order/{self.order.id}/qty/{oi.id}/',
+                             data=json.dumps({'delta': -1}), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        oi.refresh_from_db()
+        self.assertEqual(oi.quantity, 1)
+
+    def test_change_qty_to_zero_voids(self):
+        import json
+        self._add()
+        oi = self.order.items.filter(is_voided=False).first()
+        self.client.post(f'/pos/order/{self.order.id}/qty/{oi.id}/',
+                         data=json.dumps({'delta': -1}), content_type='application/json')
+        oi.refresh_from_db()
+        self.assertTrue(oi.is_voided)

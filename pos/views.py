@@ -281,6 +281,44 @@ def order_view(request, order_id):
     return render(request, 'pos/order_view.html', context)
 
 
+def _order_cart_context(order):
+    """ข้อมูลตะกร้า — ใช้ render partial หลังเพิ่ม/ลบ/ปรับจำนวน (ไม่ reload ทั้งหน้า)"""
+    order_items = order.items.filter(is_voided=False).select_related('menu_item')
+    return {
+        'order': order,
+        'order_items': order_items,
+        'has_pending': order_items.filter(status='pending').exists(),
+    }
+
+
+def order_cart(request, order_id):
+    """Partial — ตะกร้าออเดอร์ สำหรับอัปเดตเฉพาะส่วนหลังเพิ่มเมนู"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    tenant = request.user.tenant
+    order = get_object_or_404(Order, id=order_id, tenant=tenant)
+    return render(request, 'pos/_order_cart.html', _order_cart_context(order))
+
+
+@require_POST
+def change_item_qty(request, order_id, item_id):
+    """ปรับจำนวนรายการที่ยังไม่ส่งครัว (+/-) — ถ้าเหลือ 0 ถือว่ายกเลิก"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    tenant = request.user.tenant
+    order = get_object_or_404(Order, id=order_id, tenant=tenant)
+    oi = get_object_or_404(OrderItem, id=item_id, order=order, is_voided=False, status='pending')
+
+    delta = int(json.loads(request.body).get('delta', 0))
+    oi.quantity += delta
+    if oi.quantity <= 0:
+        oi.is_voided = True
+        oi.void_reason = 'ปรับจำนวนเป็น 0'
+    oi.save()
+    order.recalculate()
+    return JsonResponse({'ok': True})
+
+
 # =============================================================================
 # Order API (AJAX)
 # =============================================================================
