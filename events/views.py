@@ -29,7 +29,7 @@ def event_create(request):
     if request.method == 'POST':
         name = request.POST.get('name', '')
         location = request.POST.get('location', '')
-        date = request.POST.get('date', str(timezone.now().date()))
+        date = request.POST.get('date', str(timezone.localdate()))
 
         snapshot = []
         for mi in menu_items:

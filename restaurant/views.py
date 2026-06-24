@@ -18,7 +18,7 @@ def stock_dashboard(request):
         return redirect('login')
 
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     if not tenant:
         return render(request, 'restaurant/stock_dashboard.html', {'no_tenant': True})
@@ -236,7 +236,7 @@ def goods_receipt(request, po_id):
     success = False
 
     if request.method == 'POST':
-        today = timezone.now().date()
+        today = timezone.localdate()
         all_received = True
 
         for po_item in po_items:
@@ -486,6 +486,6 @@ def market_list(request):
         'no_supplier_items': no_supplier_items,
         'grand_total': grand_total,
         'total_items': low_items.count(),
-        'today': timezone.now().date(),
+        'today': timezone.localdate(),
     }
     return render(request, 'restaurant/market_list.html', context)

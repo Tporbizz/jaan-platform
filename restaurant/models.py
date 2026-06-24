@@ -363,12 +363,12 @@ class LotBatch(models.Model):
     def days_until_expiry(self):
         if not self.expiry_date:
             return None
-        return (self.expiry_date - timezone.now().date()).days
+        return (self.expiry_date - timezone.localdate()).days
 
     def is_expired(self):
         if not self.expiry_date:
             return False
-        return self.expiry_date < timezone.now().date()
+        return self.expiry_date < timezone.localdate()
 
 
 class WasteRecord(models.Model):

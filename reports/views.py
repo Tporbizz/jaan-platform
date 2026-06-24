@@ -64,7 +64,7 @@ def variance_report(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     # Current month
     month = int(request.GET.get('month', today.month))
@@ -127,7 +127,7 @@ def pl_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     month = int(request.GET.get('month', today.month))
     year = int(request.GET.get('year', today.year))
@@ -207,7 +207,7 @@ def sensibo_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     today_logs = ACUsageLog.objects.filter(
         tenant=tenant, timestamp__date=today,

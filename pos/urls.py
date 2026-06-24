@@ -9,6 +9,7 @@ urlpatterns = [
     path('', views.pos_dashboard, name='pos_dashboard'),
     # Table Map
     path('tables/', views.table_map, name='table_map'),
+    path('tables/grid/', views.table_grid, name='table_grid'),
     path('table/<int:table_id>/open/', views.open_table, name='open_table'),
 
     # Order

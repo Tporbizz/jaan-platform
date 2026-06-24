@@ -6,6 +6,7 @@ POS Signals — ตัวกระตุ้นอัตโนมัติ
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from core.notify import audit
 
@@ -20,7 +21,9 @@ def on_order_paid(sender, instance, **kwargs):
         return
 
     deplete_stock_for_order(instance, user=instance.created_by)
-    recompute_daily_sales(instance.tenant, instance.opened_at.date())
+    # ใช้วันที่ตามโซนเวลาไทยของ opened_at (ไม่ใช่ UTC date) ให้ตรงกับ __date lookup
+    business_date = timezone.localtime(instance.opened_at).date()
+    recompute_daily_sales(instance.tenant, business_date)
     audit(
         'order.paid', user=instance.created_by, tenant=instance.tenant,
         model_name='Order', object_id=instance.pk,

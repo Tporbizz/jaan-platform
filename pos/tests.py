@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
 
-from accounts.models import Tenant
+from accounts.models import Tenant, User
 from restaurant.models import (
     Category, Unit, Item, LotBatch, Recipe, RecipeItem, MenuItem,
     StockMovement,
@@ -118,3 +118,31 @@ class StockDepletionTest(TestCase):
         order.save()
         order.refresh_from_db()
         self.assertTrue(order.stock_depleted)
+
+
+class PosRouteSmokeTest(TestCase):
+    """กัน regression: ทุกหน้า POS ต้องโหลด 200 ไม่ใช่ 500
+    (เคยพลาด decorator ไปติด helper ทำให้ 'Tenant' object has no attribute 'user')"""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='smoke')
+        self.user = User.objects.create_user(
+            username='mgr', password='x', tenant=self.tenant,
+            role='manager', department='manager',
+        )
+        self.client.force_login(self.user)
+        Table.objects.create(tenant=self.tenant, number='1')
+
+    def test_pos_pages_load(self):
+        from django.urls import reverse
+        for name in ['pos:pos_dashboard', 'pos:table_map', 'pos:table_grid',
+                     'pos:kitchen_display', 'pos:kitchen_grid']:
+            with self.subTest(view=name):
+                r = self.client.get(reverse(name))
+                self.assertEqual(r.status_code, 200, f'{name} -> {r.status_code}')
+
+    def test_dashboard_pages_load(self):
+        for url in ['/dashboard/', '/dashboard/kpis/']:
+            with self.subTest(url=url):
+                r = self.client.get(url)
+                self.assertEqual(r.status_code, 200, f'{url} -> {r.status_code}')

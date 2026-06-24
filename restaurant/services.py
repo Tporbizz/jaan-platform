@@ -111,7 +111,7 @@ def scan_expiring_lots(tenant, days=3):
     """คืน list ของ LotBatch ที่จะหมดอายุภายใน N วัน และยังมีของเหลือ"""
     from .models import LotBatch
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     return list(
         LotBatch.objects
         .filter(

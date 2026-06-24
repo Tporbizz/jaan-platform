@@ -13,7 +13,7 @@ def shift_today(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     today_shifts = ShiftSchedule.objects.filter(
         employee__tenant=tenant, date=today,
@@ -35,7 +35,7 @@ def shift_calendar(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     start = today - datetime.timedelta(days=today.weekday())  # Monday
     end = start + datetime.timedelta(days=6)
@@ -85,7 +85,7 @@ def api_today_staff(request):
     if not request.user.is_authenticated:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     shifts = ShiftSchedule.objects.filter(
         employee__tenant=tenant, date=today,

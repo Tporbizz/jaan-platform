@@ -31,7 +31,7 @@ class Command(BaseCommand):
         if opts.get('tenant'):
             tenants = tenants.filter(id=opts['tenant'])
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         for tenant in tenants:
             self.stdout.write(self.style.HTTP_INFO(f"\n>> {tenant.name}"))
             self._run_for_tenant(tenant, today, opts['expiry_days'])

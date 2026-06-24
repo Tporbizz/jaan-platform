@@ -45,7 +45,7 @@ def dashboard_kpis(request):
     """Partial — แถบ KPI ยอดขายวันนี้ สำหรับ HTMX poll (อัปเดตสด)"""
     if not request.user.is_authenticated:
         return redirect('login')
-    today = timezone.now().date()
+    today = timezone.localdate()
     return render(request, 'includes/_dashboard_kpis.html', _today_kpis(request.user.tenant, today))
 
 
@@ -54,7 +54,7 @@ def dashboard(request):
         return redirect('login')
 
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     kpis = _today_kpis(tenant, today)
     today_revenue = kpis['today_revenue']

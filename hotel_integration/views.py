@@ -13,7 +13,7 @@ def hotel_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     config = HotelConfig.objects.filter(tenant=tenant).first()
     guests = GuestList.objects.filter(tenant=tenant, checkout_date__gte=today)
@@ -41,7 +41,7 @@ def room_lookup(request):
         return JsonResponse({'error': 'No room number'}, status=400)
 
     guest = GuestList.objects.filter(
-        tenant=tenant, room_number=room, checkout_date__gte=timezone.now().date(),
+        tenant=tenant, room_number=room, checkout_date__gte=timezone.localdate(),
     ).first()
 
     if not guest:
@@ -72,7 +72,7 @@ def import_guest_csv(request):
     reader = csv.DictReader(io.StringIO(decoded))
 
     count = 0
-    today = timezone.now().date()
+    today = timezone.localdate()
     for row in reader:
         room = row.get('room', row.get('Room', '')).strip()
         name = row.get('guest_name', row.get('Guest Name', row.get('name', ''))).strip()
@@ -117,7 +117,7 @@ def bf_settlement(request):
     if not request.user.is_authenticated:
         return redirect('login')
     tenant = request.user.tenant
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     if request.method == 'POST':
         date = request.POST.get('date', str(today))

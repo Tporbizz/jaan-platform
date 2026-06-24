@@ -26,7 +26,7 @@ def pos_dashboard(request):
     if not tenant:
         return render(request, 'pos/pos_dashboard.html', {'no_tenant': True})
 
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     # --- Today's sales ---
     today_orders = Order.objects.filter(tenant=tenant, status='paid', opened_at__date=today)
@@ -140,13 +140,8 @@ def pos_dashboard(request):
 # Table Map
 # =============================================================================
 
-@require_pos
-def table_map(request):
-
-    tenant = request.user.tenant
-    if not tenant:
-        return render(request, 'pos/table_map.html', {'no_tenant': True})
-
+def _table_map_context(tenant):
+    """ข้อมูลผังโต๊ะ — ใช้ร่วมกันระหว่างหน้าเต็มและ partial (HTMX poll)"""
     tables = Table.objects.filter(tenant=tenant, is_active=True)
 
     tables_data = []
@@ -154,7 +149,6 @@ def table_map(request):
         active_order = Order.objects.filter(
             table=table, status__in=['open', 'sent', 'served', 'bill'],
         ).first()
-
         tables_data.append({
             'table': table,
             'order': active_order,
@@ -163,13 +157,31 @@ def table_map(request):
             'duration': active_order.duration_minutes if active_order else 0,
         })
 
-    context = {
+    return {
         'tables_data': tables_data,
         'total_tables': tables.count(),
         'occupied': tables.filter(status='occupied').count(),
         'empty': tables.filter(status='empty').count(),
     }
-    return render(request, 'pos/table_map.html', context)
+
+
+@require_pos
+def table_map(request):
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'pos/table_map.html', {'no_tenant': True})
+    return render(request, 'pos/table_map.html', _table_map_context(tenant))
+
+
+@require_pos
+def table_grid(request):
+    """Partial — กริดโต๊ะสำหรับ HTMX poll (อัปเดตสดทุก 10 วิ, หยุดเมื่อเปิด modal)"""
+    tenant = request.user.tenant
+    if not tenant:
+        return render(request, 'pos/_table_grid.html', {'tables_data': [], 'total_tables': 0, 'occupied': 0, 'empty': 0, 'oob': True})
+    ctx = _table_map_context(tenant)
+    ctx['oob'] = True
+    return render(request, 'pos/_table_grid.html', ctx)
 
 
 # =============================================================================
@@ -416,7 +428,7 @@ def send_to_kitchen(request, order_id):
     ticket_number = None
     if kitchen_items:
         daily_count = KitchenTicket.objects.filter(
-            tenant=tenant, created_at__date=timezone.now().date(),
+            tenant=tenant, created_at__date=timezone.localdate(),
         ).count() + 1
         ticket_number = f"KT-{timezone.now().strftime('%H%M')}-{daily_count:03d}"
 
@@ -457,7 +469,7 @@ def _kitchen_context(tenant):
     tickets = KitchenTicket.objects.filter(
         tenant=tenant,
         status__in=['pending', 'in_progress'],
-        created_at__date=timezone.now().date(),
+        created_at__date=timezone.localdate(),
     ).select_related('order', 'table', 'prepared_by').prefetch_related('items__order_item__menu_item')
 
     from hr.models import ShiftSchedule
@@ -465,7 +477,7 @@ def _kitchen_context(tenant):
         s.employee for s in
         ShiftSchedule.objects.filter(
             employee__tenant=tenant,
-            date=timezone.now().date(),
+            date=timezone.localdate(),
             employee__position__in=('chef', 'sous_chef', 'cook'),
         ).select_related('employee')
     ]
@@ -489,8 +501,10 @@ def kitchen_grid(request):
     """Partial — กริดตั๋วครัวสำหรับ HTMX poll (อัปเดตสดทุก 5 วิ)"""
     tenant = request.user.tenant
     if not tenant:
-        return render(request, 'pos/_kitchen_tickets.html', {'tickets': [], 'total_tickets': 0})
-    return render(request, 'pos/_kitchen_tickets.html', _kitchen_context(tenant))
+        return render(request, 'pos/_kitchen_tickets.html', {'tickets': [], 'total_tickets': 0, 'oob': True})
+    ctx = _kitchen_context(tenant)
+    ctx['oob'] = True
+    return render(request, 'pos/_kitchen_tickets.html', ctx)
 
 
 @require_POST
@@ -701,7 +715,7 @@ def kitchen_data(request):
     tickets = KitchenTicket.objects.filter(
         tenant=tenant,
         status__in=['pending', 'in_progress'],
-        created_at__date=timezone.now().date(),
+        created_at__date=timezone.localdate(),
     ).select_related('order', 'table').prefetch_related('items__order_item__menu_item')
 
     return JsonResponse({

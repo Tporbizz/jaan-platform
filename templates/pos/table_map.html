@@ -30,9 +30,11 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">แผนผังโต๊ะ</h1>
                 <p class="text-gray-400 mt-1">
-                    <span class="text-green-600 font-semibold">{{ empty }}</span> ว่าง ·
-                    <span class="text-blue-600 font-semibold">{{ occupied }}</span> มีลูกค้า ·
-                    {{ total_tables }} โต๊ะทั้งหมด
+                    <span id="table-stats">
+                        <span class="text-green-600 font-semibold">{{ empty }}</span> ว่าง ·
+                        <span class="text-blue-600 font-semibold">{{ occupied }}</span> มีลูกค้า ·
+                        {{ total_tables }} โต๊ะทั้งหมด
+                    </span>
                 </p>
             </div>
             <a href="/pos/kitchen/" class="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition">
@@ -40,46 +42,12 @@
             </a>
         </div>
 
-        <!-- Table Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {% for d in tables_data %}
-            <div class="table-card table-{{ d.table.status }}"
-                 onclick="handleTable({{ d.table.id }}, '{{ d.table.status }}', {{ d.order.id|default:'null' }})"
-                 data-table-id="{{ d.table.id }}">
-
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-lg font-bold">{{ d.table.number }}</span>
-                    {% if d.table.status == 'occupied' %}
-                    <span class="text-xs opacity-70">{{ d.duration }} นาที</span>
-                    {% endif %}
-                </div>
-
-                {% if d.table.name %}
-                <div class="text-xs opacity-60 mb-2">{{ d.table.name }}</div>
-                {% endif %}
-
-                {% if d.table.status == 'empty' %}
-                <div class="text-sm text-gray-400">{{ d.table.capacity }} ที่นั่ง</div>
-                <div class="text-xs text-gray-300 mt-1">แตะเพื่อเปิดโต๊ะ</div>
-
-                {% elif d.table.status == 'occupied' %}
-                <div class="text-sm opacity-70">{{ d.guests }} คน</div>
-                <div class="text-2xl font-bold mt-1">฿{{ d.total|floatformat:0 }}</div>
-
-                {% elif d.table.status == 'bill_pending' %}
-                <div class="text-sm opacity-80">รอเก็บเงิน</div>
-                <div class="text-2xl font-bold mt-1">฿{{ d.total|floatformat:0 }}</div>
-
-                {% elif d.table.status == 'reserved' %}
-                <div class="text-sm">จองแล้ว</div>
-                {% endif %}
-            </div>
-            {% empty %}
-            <div class="col-span-full text-center py-16">
-                <span class="text-4xl mb-3 block">🪑</span>
-                <p class="text-gray-400">ยังไม่มีโต๊ะ — เพิ่มผ่าน Admin</p>
-            </div>
-            {% endfor %}
+        <!-- Table Grid — HTMX poll ทุก 10 วิ (หยุดเมื่อเปิด modal) -->
+        <div id="table-grid"
+             hx-get="{% url 'pos:table_grid' %}"
+             hx-trigger="every 10s"
+             hx-swap="innerHTML">
+            {% include 'pos/_table_grid.html' %}
         </div>
     </main>
 </div>
@@ -141,6 +109,16 @@ function updateTotal() {
     document.getElementById('total-guests').textContent = m + w + c + s;
 }
 
+// หยุด HTMX poll ขณะเปิด modal — กัน selectedTableId / ค่าที่กรอกหาย
+function isModalOpen() {
+    return document.getElementById('open-modal').classList.contains('show');
+}
+document.body.addEventListener('htmx:beforeRequest', (e) => {
+    if (e.detail.target && e.detail.target.id === 'table-grid' && isModalOpen()) {
+        e.preventDefault();
+    }
+});
+
 function handleTable(tableId, status, orderId) {
     if (status === 'empty') {
         selectedTableId = tableId;
@@ -183,8 +161,5 @@ function confirmOpen() {
         }
     });
 }
-
-// Auto-refresh every 10s
-setInterval(() => { window.location.reload(); }, 10000);
 </script>
 {% endblock %}

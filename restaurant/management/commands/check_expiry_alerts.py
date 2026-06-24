@@ -30,7 +30,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         days = options['days']
         dry_run = options['dry_run']
-        today = timezone.now().date()
+        today = timezone.localdate()
         cutoff = today + timedelta(days=days)
 
         # ของที่หมดอายุแล้ว
