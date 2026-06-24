@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}เชียร์ขายวันนี้ — Jaan{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card-dark { background: #1a1a2e; border-radius: 1.25rem; padding: 1.5rem; color: white; }
+    .btn-primary { background: #1a1a2e; color: white; font-weight: 800; border-radius: 0.9rem; padding: 0.9rem 1.6rem; font-size: 1.05rem; }
+    .btn-primary:hover { background: #000; }
+    .bar-track { background: #f0e0cc; border-radius: 999px; height: 14px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg,#EBB520,#F5C542); height: 100%; border-radius: 999px; transition: width .3s; }
+    .rank { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; }
+    .rank-1 { background: #1a1a2e; color: #F5C542; }
+    .rank-2 { background: #e8ddd3; color: #1a1a2e; }
+    .rank-3 { background: #f0e0cc; color: #6b5b45; }
+    .rank-x { background: #f7f1e8; color: #9b8a72; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='campaign' %}
+
+    <main class="flex-1 ml-[72px] p-6 md:p-8 max-w-[1100px]">
+        <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div>
+                <h1 class="text-3xl font-extrabold text-gray-900">เชียร์ขายวันนี้</h1>
+                <p class="text-gray-400 mt-1 text-lg">{{ today|date:"l d/m/Y" }}</p>
+            </div>
+            {% if can_edit %}
+            <a href="{% url 'pos:campaign_edit' %}" class="btn-primary">ตั้งเป้า / แก้ไข</a>
+            {% endif %}
+        </div>
+
+        {% if messages %}
+            {% for m in messages %}
+            <div class="mb-4 px-4 py-3 rounded-xl text-base font-semibold {% if m.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-700{% endif %}">{{ m }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if not campaign %}
+        <div class="card text-center py-16">
+            <div class="text-2xl font-extrabold text-gray-700">ยังไม่ได้ตั้งเป้าเชียร์ขายวันนี้</div>
+            <p class="text-gray-400 mt-2 text-lg">เลือกเมนูกำไรดี ตั้งเป้าทีม และค่าคอมต่อจาน เพื่อกระตุ้นยอดขาย</p>
+            {% if can_edit %}
+            <a href="{% url 'pos:campaign_edit' %}" class="btn-primary inline-block mt-6">ตั้งเป้าเลย</a>
+            {% endif %}
+        </div>
+        {% else %}
+
+        <!-- สรุปทีม -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card-dark">
+                <div class="text-sm opacity-60">ขายได้แล้ว / เป้าทีม</div>
+                <div class="text-4xl font-extrabold mt-1">{{ data.total_sold }} <span class="text-xl opacity-50">/ {{ data.total_target }} จาน</span></div>
+                <div class="bar-track mt-3"><div class="bar-fill" style="width: {{ data.total_pct }}%"></div></div>
+                <div class="text-sm opacity-60 mt-2">{{ data.total_pct }}% ของเป้า</div>
+            </div>
+            <div class="card">
+                <div class="text-sm text-gray-400">ค่าคอมจ่ายทีมรวมวันนี้</div>
+                <div class="text-4xl font-extrabold mt-1 text-gray-900">฿{{ data.total_commission|floatformat:0 }}</div>
+            </div>
+            <div class="card">
+                <div class="text-sm text-gray-400">โน้ตถึงทีม</div>
+                <div class="text-lg font-semibold text-gray-700 mt-1">{{ campaign.note|default:"— ไม่มี —" }}</div>
+            </div>
+        </div>
+
+        <!-- เมนูเป้า -->
+        <h2 class="text-xl font-extrabold text-gray-900 mb-3">เมนูที่ต้องเชียร์</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {% for it in data.items %}
+            <div class="card">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="text-xl font-extrabold text-gray-900">{{ it.menu.name }}</div>
+                        <div class="text-gray-400 text-base mt-0.5">฿{{ it.menu.selling_price|floatformat:0 }}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-base text-gray-400">ค่าคอม/จาน</div>
+                        <div class="text-2xl font-extrabold text-jaan-600">+฿{{ it.commission_per_dish|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="flex items-end justify-between mt-4 mb-1">
+                    <div class="text-3xl font-extrabold text-gray-900">{{ it.sold }} <span class="text-lg text-gray-400">/ {{ it.target }} จาน</span></div>
+                    <div class="text-base font-bold text-gray-500">{{ it.pct }}%</div>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width: {{ it.pct }}%"></div></div>
+                {% if it.remaining > 0 %}
+                <div class="text-base text-gray-500 mt-2">เหลืออีก <span class="font-bold text-gray-800">{{ it.remaining }}</span> จานถึงเป้า</div>
+                {% else %}
+                <div class="text-base font-bold text-green-600 mt-2">ถึงเป้าแล้ว</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- กระดานผู้นำ -->
+        <h2 class="text-xl font-extrabold text-gray-900 mb-3">กระดานผู้นำ — ใครเชียร์เก่งสุด</h2>
+        <div class="card">
+            {% for s in data.leaderboard %}
+            <div class="flex items-center justify-between py-3 {% if not forloop.last %}border-b border-cream-200{% endif %} {% if s.name == my_name %}bg-cream-50 -mx-2 px-2 rounded-xl{% endif %}">
+                <div class="flex items-center gap-4">
+                    <div class="rank {% if forloop.counter == 1 %}rank-1{% elif forloop.counter == 2 %}rank-2{% elif forloop.counter == 3 %}rank-3{% else %}rank-x{% endif %}">{{ forloop.counter }}</div>
+                    <div class="text-lg font-bold text-gray-900">{{ s.name }}{% if s.name == my_name %} <span class="text-jaan-600">(ฉัน)</span>{% endif %}</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xl font-extrabold text-gray-900">{{ s.dishes }} จาน</div>
+                    <div class="text-base font-bold text-jaan-600">ได้คอม ฿{{ s.commission|floatformat:0 }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-10 text-gray-400 text-lg">ยังไม่มียอดขายเมนูเป้าวันนี้ — เริ่มเชียร์กันเลย</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

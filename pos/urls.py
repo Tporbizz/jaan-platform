@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from . import campaign_views
 
 app_name = 'pos'
 
@@ -25,6 +26,10 @@ urlpatterns = [
     path('kitchen/grid/', views.kitchen_grid, name='kitchen_grid'),
     path('kitchen/data/', views.kitchen_data, name='kitchen_data'),
     path('kitchen/ticket/<int:ticket_id>/', views.update_ticket, name='update_ticket'),
+
+    # Sales Campaign — เชียร์ขาย
+    path('campaign/', campaign_views.campaign_board, name='campaign_board'),
+    path('campaign/edit/', campaign_views.campaign_edit, name='campaign_edit'),
 
     # Payment
     path('payment/<int:order_id>/', views.payment_view, name='payment_view'),

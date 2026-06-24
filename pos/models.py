@@ -251,3 +251,48 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"฿{self.amount} — {self.get_payment_method_display()} (Order #{self.order.order_number})"
+
+
+# =============================================================================
+# Sales Campaign — เป้าเชียร์ขายประจำวัน + ค่าคอมต่อจาน
+# =============================================================================
+
+class SalesCampaign(models.Model):
+    """เป้าเชียร์ขายประจำวัน — ผู้จัดการเลือกเมนูกำไรดีให้ทีมดันยอด พร้อมตั้งค่าคอมต่อจาน"""
+
+    tenant = models.ForeignKey('accounts.Tenant', on_delete=models.CASCADE, related_name='campaigns', verbose_name='ร้าน')
+    date = models.DateField('วันที่')
+    title = models.CharField('ชื่อแคมเปญ', max_length=120, default='เป้าเชียร์ขายวันนี้')
+    note = models.TextField('โน้ตถึงทีม', blank=True, help_text='ข้อความกระตุ้นทีม เช่น เน้นเชียร์ของหวาน')
+    is_active = models.BooleanField('เปิดใช้งาน', default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, verbose_name='ตั้งโดย')
+    created_at = models.DateTimeField('สร้างเมื่อ', auto_now_add=True)
+
+    class Meta:
+        db_table = 'pos_salescampaign'
+        verbose_name = 'แคมเปญเชียร์ขาย'
+        verbose_name_plural = 'แคมเปญเชียร์ขาย'
+        ordering = ['-date']
+        unique_together = ['tenant', 'date']
+
+    def __str__(self):
+        return f"{self.title} ({self.date})"
+
+
+class CampaignItem(models.Model):
+    """เมนูเป้าในแคมเปญ — เป้าจำนวนทีม + ค่าคอมต่อจานที่คนขายได้รับ"""
+
+    campaign = models.ForeignKey(SalesCampaign, on_delete=models.CASCADE, related_name='items', verbose_name='แคมเปญ')
+    menu_item = models.ForeignKey('restaurant.MenuItem', on_delete=models.CASCADE, related_name='campaign_items', verbose_name='เมนู')
+    target_qty = models.PositiveIntegerField('เป้าทีม (จาน)', default=10, help_text='ทีมต้องขายรวมให้ได้กี่จานวันนี้')
+    commission_per_dish = models.DecimalField('ค่าคอมต่อจาน', max_digits=8, decimal_places=2, default=0,
+                                              help_text='เงินที่คนขายได้รับต่อการขาย 1 จาน')
+
+    class Meta:
+        db_table = 'pos_campaignitem'
+        verbose_name = 'เมนูเป้า'
+        verbose_name_plural = 'เมนูเป้า'
+        unique_together = ['campaign', 'menu_item']
+
+    def __str__(self):
+        return f"{self.menu_item.name} — เป้า {self.target_qty} จาน (+฿{self.commission_per_dish}/จาน)"

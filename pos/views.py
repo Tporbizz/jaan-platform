@@ -250,8 +250,13 @@ def order_view(request, order_id):
         tenant=tenant, is_available=True,
     ).select_related('recipe').order_by('menu_category', 'sort_order', 'name')
 
+    # เมนูที่อยู่ในแคมเปญเชียร์ขายวันนี้ → ติดป้าย + ค่าคอม
+    from .services import campaign_menu_ids
+    campaign_menus = campaign_menu_ids(tenant)
+
     menu_by_cat = {}
     for item in menu_items:
+        item.campaign_commission = campaign_menus.get(item.id)
         cat = item.get_menu_category_display()
         if cat not in menu_by_cat:
             menu_by_cat[cat] = []

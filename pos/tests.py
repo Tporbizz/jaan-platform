@@ -146,3 +146,82 @@ class PosRouteSmokeTest(TestCase):
             with self.subTest(url=url):
                 r = self.client.get(url)
                 self.assertEqual(r.status_code, 200, f'{url} -> {r.status_code}')
+
+
+class SalesCampaignTest(TestCase):
+    """ระบบเชียร์ขาย: ความคืบหน้า + ค่าคอม + กระดานผู้นำ"""
+
+    def setUp(self):
+        from pos.models import SalesCampaign, CampaignItem
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='camp')
+        self.alice = User.objects.create_user(username='alice', password='x', tenant=self.tenant, role='staff')
+        self.bob = User.objects.create_user(username='bob', password='x', tenant=self.tenant, role='staff')
+        self.table = Table.objects.create(tenant=self.tenant, number='1')
+        self.padthai = MenuItem.objects.create(tenant=self.tenant, name='ผัดไทยกุ้งแม่น้ำ', selling_price=Decimal('550'))
+
+        self.campaign = SalesCampaign.objects.create(tenant=self.tenant, date=timezone.localdate())
+        CampaignItem.objects.create(campaign=self.campaign, menu_item=self.padthai,
+                                    target_qty=10, commission_per_dish=Decimal('30'))
+
+    def _sell(self, seller, qty):
+        order = Order.objects.create(
+            tenant=self.tenant, table=self.table, order_number=f'T{seller.username}',
+            guest_count=2, total=Decimal('550'), subtotal=Decimal('550'), created_by=seller,
+        )
+        OrderItem.objects.create(order=order, menu_item=self.padthai, quantity=qty, unit_price=Decimal('550'))
+        order.status = 'paid'
+        order.save()
+        return order
+
+    def test_progress_counts_sold(self):
+        from pos.services import campaign_progress
+        self._sell(self.alice, 3)
+        self._sell(self.bob, 2)
+        data = campaign_progress(self.campaign)
+        self.assertEqual(data['total_sold'], 5)
+        self.assertEqual(data['total_target'], 10)
+        self.assertEqual(data['total_pct'], 50)
+        self.assertEqual(data['items'][0]['sold'], 5)
+        self.assertEqual(data['items'][0]['remaining'], 5)
+
+    def test_commission_per_staff(self):
+        from pos.services import campaign_progress
+        self._sell(self.alice, 4)  # 4 * 30 = 120
+        self._sell(self.bob, 1)    # 1 * 30 = 30
+        data = campaign_progress(self.campaign)
+        lb = {s['name']: s for s in data['leaderboard']}
+        self.assertEqual(lb['alice']['dishes'], 4)
+        self.assertEqual(lb['alice']['commission'], Decimal('120'))
+        self.assertEqual(lb['bob']['commission'], Decimal('30'))
+        # alice นำ bob
+        self.assertEqual(data['leaderboard'][0]['name'], 'alice')
+        self.assertEqual(data['total_commission'], Decimal('150'))
+
+    def test_only_paid_orders_count(self):
+        from pos.services import campaign_progress
+        # ออเดอร์ยังไม่จ่าย ไม่ควรนับ
+        order = Order.objects.create(
+            tenant=self.tenant, table=self.table, order_number='Topen',
+            guest_count=1, total=Decimal('550'), created_by=self.alice,
+        )
+        OrderItem.objects.create(order=order, menu_item=self.padthai, quantity=5, unit_price=Decimal('550'))
+        data = campaign_progress(self.campaign)
+        self.assertEqual(data['total_sold'], 0)
+
+    def test_campaign_menu_ids_helper(self):
+        from pos.services import campaign_menu_ids
+        ids = campaign_menu_ids(self.tenant)
+        self.assertEqual(ids.get(self.padthai.id), Decimal('30'))
+
+
+class CampaignRouteSmokeTest(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='cr')
+        self.mgr = User.objects.create_user(username='mgr', password='x', tenant=self.tenant,
+                                             role='manager', department='manager')
+        self.client.force_login(self.mgr)
+
+    def test_pages_load(self):
+        for url in ['/pos/campaign/', '/pos/campaign/edit/']:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)

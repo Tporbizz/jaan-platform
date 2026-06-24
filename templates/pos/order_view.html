@@ -8,6 +8,7 @@
     .menu-btn { background: white; border: 1.5px solid #f0e0cc; border-radius: 1rem; padding: 0.75rem; cursor: pointer; transition: all 0.15s; text-align: center; }
     .menu-btn:hover { border-color: #d4a017; background: #fdf8f3; }
     .menu-btn:active { transform: scale(0.97); }
+    .menu-campaign { border-color: #EBB520; border-width: 2px; background: #fffdf5; box-shadow: 0 2px 8px rgba(235,181,32,0.18); }
     .cat-tab { padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
     .cat-tab.active { background: #1a1a2e; color: white; }
     .cat-tab:not(.active) { background: white; color: #666; }
@@ -85,7 +86,10 @@
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" id="menu-grid">
             {% for cat_name, items in menu_by_cat.items %}
             {% for mi in items %}
-            <div class="menu-btn menu-item" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }})">
+            <div class="menu-btn menu-item {% if mi.campaign_commission %}menu-campaign{% endif %}" data-cat="{{ cat_name }}" onclick="addItem({{ mi.id }})">
+                {% if mi.campaign_commission %}
+                <div class="text-[11px] font-extrabold text-white bg-jaan-600 rounded-md px-1.5 py-0.5 inline-block mb-1">เชียร์วันนี้ +฿{{ mi.campaign_commission|floatformat:0 }}/จาน</div>
+                {% endif %}
                 <div class="text-sm font-semibold text-gray-800">{{ mi.name }}</div>
                 {% if mi.name_en %}<div class="text-xs text-gray-400">{{ mi.name_en }}</div>{% endif %}
                 <div class="flex items-center justify-between mt-1">
