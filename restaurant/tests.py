@@ -260,3 +260,50 @@ class StockSearchTest(TestCase):
     def test_filter_category(self):
         r = self.client.get(f'/stock/?cat={self.veg.id}')
         self.assertEqual(r.context['item_match_count'], 1)  # เฉพาะคะน้า
+
+
+class BillScanReceiveTest(TestCase):
+    """สแกนบิล → รับเข้าสต็อก (logic รับเข้า ไม่ต้องใช้ API)"""
+
+    def setUp(self):
+        from accounts.models import User
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='scan')
+        self.kt = User.objects.create_user(username='kt', password='x', tenant=self.tenant,
+                                            department='kt', role='staff')
+        self.fb = User.objects.create_user(username='fb', password='x', tenant=self.tenant,
+                                            department='fb', role='staff')
+        self.unit = Unit.objects.create(tenant=self.tenant, name='กรัม', abbreviation='g')
+        self.cat = Category.objects.create(tenant=self.tenant, name='ของสด')
+        self.pork = Item.objects.create(tenant=self.tenant, code='FF-0009', name='หมูบด',
+                                        category=self.cat, unit=self.unit,
+                                        cost_per_unit=Decimal('0.12'), current_stock=Decimal('0'))
+
+    def test_receive_stock_service(self):
+        from restaurant.services import receive_stock
+        from restaurant.models import LotBatch, StockMovement
+        receive_stock(self.tenant, self.pork, '10', '0.15', reference='BILL')
+        self.pork.refresh_from_db()
+        self.assertEqual(self.pork.current_stock, Decimal('10'))
+        self.assertEqual(self.pork.cost_per_unit, Decimal('0.15'))  # อัปเดตราคาล่าสุด
+        self.assertEqual(LotBatch.objects.filter(item=self.pork).count(), 1)
+        self.assertEqual(StockMovement.objects.filter(item=self.pork, movement_type='in').count(), 1)
+
+    def test_scan_receive_endpoint(self):
+        import json
+        self.client.force_login(self.kt)
+        r = self.client.post('/procurement/scan/receive/', data=json.dumps({
+            'supplier': 'แม็คโคร',
+            'items': [{'item_id': self.pork.id, 'qty': '8', 'unit_price': '0.20', 'expiry': '2026-07-15'}],
+        }), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['received'], 1)
+        self.pork.refresh_from_db()
+        self.assertEqual(self.pork.current_stock, Decimal('8'))
+
+    def test_fb_cannot_access_scan(self):
+        self.client.force_login(self.fb)
+        self.assertEqual(self.client.get('/procurement/scan/').status_code, 403)
+
+    def test_kitchen_can_access_scan(self):
+        self.client.force_login(self.kt)
+        self.assertEqual(self.client.get('/procurement/scan/').status_code, 200)

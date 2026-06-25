@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}สแกนบิล — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .btn-primary { background: #1a1a2e; color: white; font-weight: 800; border-radius: 0.9rem; padding: 0.85rem 1.6rem; font-size: 1.05rem; }
+    .btn-primary:disabled { opacity: .4; }
+    .inp { border: 1.5px solid #f0e0cc; border-radius: 0.7rem; padding: 0.55rem 0.7rem; font-size: 0.95rem; width: 100%; }
+    .inp:focus { outline: none; border-color: #EBB520; }
+    .drop { border: 2px dashed #e0d5c8; border-radius: 1.25rem; padding: 2.5rem; text-align: center; cursor: pointer; background: #fffdf9; }
+    .drop:hover { border-color: #EBB520; background: #fffbf0; }
+    .rowgrid { display: grid; grid-template-columns: 1.6fr 90px 110px 130px 40px; gap: 0.5rem; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='procurement' %}
+
+    <main class="flex-1 ml-[72px] p-6 md:p-8 max-w-[1000px]">
+        <div class="mb-6">
+            <a href="{% url 'procurement:po_list' %}" class="text-gray-400 text-base font-semibold">กลับหน้าจัดซื้อ</a>
+            <h1 class="text-3xl font-extrabold text-gray-900 mt-1">สแกนบิลรับของ</h1>
+            <p class="text-gray-400 mt-1 text-lg">ถ่าย/อัปโหลดบิล Makro หรือ supplier → ระบบอ่านรายการให้ → ทบทวนแล้วรับเข้าสต็อก</p>
+            {% if not has_api %}
+            <div class="mt-3 px-4 py-3 rounded-xl bg-amber-50 text-amber-800 text-sm font-semibold">
+                ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY บนเซิร์ฟเวอร์ — การอ่านบิลอัตโนมัติจะใช้ไม่ได้จนกว่าจะตั้งค่า
+                (แต่ยังเพิ่มรายการเองแล้วรับเข้าสต็อกได้)
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ขั้น 1: อัปโหลดบิล -->
+        <div class="card mb-5" id="upload-card">
+            <label class="drop block" id="drop">
+                <input type="file" id="bill-file" accept="image/*" capture="environment" class="hidden">
+                <div class="text-xl font-extrabold text-gray-700">แตะเพื่อถ่าย / เลือกรูปบิล</div>
+                <div class="text-gray-400 mt-1">รองรับ 1 บิลต่อครั้ง (แยก supplier ได้)</div>
+                <img id="preview" class="hidden mx-auto mt-4 max-h-64 rounded-xl">
+            </label>
+            <button id="btn-extract" class="btn-primary mt-4" disabled>อ่านบิล</button>
+            <span id="extract-status" class="ml-3 text-gray-500"></span>
+        </div>
+
+        <!-- ขั้น 2: ทบทวนรายการ -->
+        <div class="card hidden" id="review-card">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h2 class="text-xl font-extrabold text-gray-900">ทบทวนรายการก่อนรับเข้าสต็อก</h2>
+                <div>
+                    <label class="text-sm text-gray-500">Supplier</label>
+                    <input id="supplier" class="inp inline-block w-48 ml-2" placeholder="ชื่อร้าน">
+                </div>
+            </div>
+            <div class="rowgrid text-sm font-extrabold text-gray-500 border-b-2 border-gray-900 pb-2 mb-2">
+                <div>วัตถุดิบในระบบ (จับคู่)</div>
+                <div class="text-center">จำนวน</div>
+                <div class="text-center">ราคา/หน่วย</div>
+                <div class="text-center">หมดอายุ</div>
+                <div></div>
+            </div>
+            <div id="rows"></div>
+            <div class="flex items-center justify-between mt-5">
+                <div class="text-gray-500">รวม <span id="row-count" class="font-extrabold text-gray-900">0</span> รายการ</div>
+                <button id="btn-receive" class="btn-primary">ยืนยันรับเข้าสต็อก</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+{{ items_json|json_script:"items-data" }}
+<script>
+const ITEMS = JSON.parse(document.getElementById('items-data').textContent);
+const csrf = '{{ csrf_token }}';
+let fileData = null;
+
+const fileInput = document.getElementById('bill-file');
+const btnExtract = document.getElementById('btn-extract');
+const status = document.getElementById('extract-status');
+
+document.getElementById('drop').addEventListener('click', (e) => { if (e.target.id !== 'bill-file') fileInput.click(); });
+fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    if (!f) return;
+    fileData = f;
+    const img = document.getElementById('preview');
+    img.src = URL.createObjectURL(f); img.classList.remove('hidden');
+    btnExtract.disabled = false;
+});
+
+// จับคู่ชื่อจากบิล -> วัตถุดิบในระบบ (อย่างง่าย)
+function autoMatch(name) {
+    const n = (name || '').toLowerCase().replace(/\s/g, '');
+    if (!n) return null;
+    let best = null;
+    for (const it of ITEMS) {
+        const iname = it.name.toLowerCase().replace(/\s/g, '');
+        if (iname.includes(n) || n.includes(iname.slice(0, 4))) { best = it; break; }
+    }
+    return best;
+}
+
+btnExtract.addEventListener('click', () => {
+    if (!fileData) return;
+    btnExtract.disabled = true; status.textContent = 'กำลังอ่านบิล...';
+    const fd = new FormData(); fd.append('bill', fileData);
+    fetch("{% url 'procurement:scan_bill_extract' %}", { method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd })
+        .then(r => r.json())
+        .then(data => {
+            btnExtract.disabled = false; status.textContent = '';
+            if (!data.ok) { alert(data.error || 'อ่านบิลไม่สำเร็จ'); return; }
+            if (data.supplier) document.getElementById('supplier').value = data.supplier;
+            renderRows(data.items || []);
+            document.getElementById('review-card').classList.remove('hidden');
+        })
+        .catch(e => { btnExtract.disabled = false; status.textContent = ''; alert('ผิดพลาด: ' + e); });
+});
+
+function renderRows(items) {
+    const wrap = document.getElementById('rows'); wrap.innerHTML = '';
+    items.forEach((it, i) => {
+        const match = autoMatch(it.name);
+        const row = document.createElement('div');
+        row.className = 'rowgrid py-2 border-b border-cream-100';
+        row.innerHTML = `
+            <div class="relative">
+                <input class="inp ing-search" data-i="${i}" autocomplete="off" placeholder="ค้นหาวัตถุดิบ..." value="${match ? match.name : ''}">
+                <input type="hidden" class="ing-id" data-i="${i}" value="${match ? match.id : ''}">
+                <div class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-cream-200 rounded-xl shadow-lg max-h-56 overflow-y-auto ing-results" data-i="${i}"></div>
+                <div class="text-xs text-gray-400 mt-0.5">จากบิล: ${it.name || '-'}</div>
+            </div>
+            <input type="number" step="0.001" class="inp text-center ing-qty" data-i="${i}" value="${it.qty || ''}">
+            <input type="number" step="0.01" class="inp text-center ing-price" data-i="${i}" value="${it.unit_price || ''}">
+            <input type="date" class="inp ing-expiry" data-i="${i}">
+            <button class="text-red-400 font-bold ing-del" data-i="${i}">ลบ</button>`;
+        wrap.appendChild(row);
+    });
+    bindRowEvents();
+    updateCount();
+}
+
+function bindRowEvents() {
+    document.querySelectorAll('.ing-search').forEach(inp => {
+        inp.addEventListener('input', () => searchItems(inp));
+        inp.addEventListener('focus', () => searchItems(inp));
+    });
+    document.querySelectorAll('.ing-del').forEach(b => b.addEventListener('click', () => {
+        b.closest('.rowgrid').remove(); updateCount();
+    }));
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ing-search') && !e.target.closest('.ing-results'))
+            document.querySelectorAll('.ing-results').forEach(r => r.classList.add('hidden'));
+    });
+}
+
+function searchItems(inp) {
+    const i = inp.dataset.i;
+    const box = document.querySelector(`.ing-results[data-i="${i}"]`);
+    const idInput = document.querySelector(`.ing-id[data-i="${i}"]`);
+    idInput.value = '';
+    const q = inp.value.trim().toLowerCase();
+    if (!q) { box.classList.add('hidden'); return; }
+    const matches = ITEMS.filter(it => it.name.toLowerCase().includes(q) || (it.code || '').toLowerCase().includes(q)).slice(0, 20);
+    box.innerHTML = matches.map(it =>
+        `<div class="px-3 py-2 hover:bg-cream-50 cursor-pointer text-sm opt" data-id="${it.id}" data-name="${it.name}" data-cost="${it.cost}">
+            ${it.name} <span class="text-xs text-gray-400">${it.code || ''} · ฿${it.cost}/${it.unit}</span></div>`).join('')
+        || '<div class="px-3 py-2 text-sm text-gray-400">ไม่พบ</div>';
+    box.classList.remove('hidden');
+    box.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => {
+        inp.value = o.dataset.name; idInput.value = o.dataset.id;
+        const price = document.querySelector(`.ing-price[data-i="${i}"]`);
+        if (!price.value) price.value = o.dataset.cost;
+        box.classList.add('hidden');
+    }));
+}
+
+function updateCount() {
+    document.getElementById('row-count').textContent = document.querySelectorAll('#rows .rowgrid').length;
+}
+
+document.getElementById('btn-receive').addEventListener('click', () => {
+    const rows = [];
+    document.querySelectorAll('#rows .rowgrid').forEach(r => {
+        const i = r.querySelector('.ing-id').dataset.i;
+        rows.push({
+            item_id: r.querySelector('.ing-id').value,
+            qty: r.querySelector('.ing-qty').value,
+            unit_price: r.querySelector('.ing-price').value,
+            expiry: r.querySelector('.ing-expiry').value,
+        });
+    });
+    const valid = rows.filter(r => r.item_id && parseFloat(r.qty) > 0);
+    if (!valid.length) { alert('กรุณาจับคู่วัตถุดิบและใส่จำนวนอย่างน้อย 1 รายการ'); return; }
+    const btn = document.getElementById('btn-receive'); btn.disabled = true; btn.textContent = 'กำลังรับเข้า...';
+    fetch("{% url 'procurement:scan_bill_receive' %}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ supplier: document.getElementById('supplier').value, items: valid }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) { alert('รับเข้าสต็อก ' + data.received + ' รายการแล้ว'); window.location.href = "{% url 'restaurant:stock_dashboard' %}"; }
+        else { alert(data.error || 'ผิดพลาด'); btn.disabled = false; btn.textContent = 'ยืนยันรับเข้าสต็อก'; }
+    });
+});
+</script>
+{% endblock %}

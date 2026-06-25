@@ -127,3 +127,47 @@ def scan_expiring_lots(tenant, days=3):
 def scan_low_stock(tenant):
     """คืน list ของวัตถุดิบที่ต่ำกว่าขั้นต่ำ"""
     return list(_items_below_min(tenant))
+
+
+def receive_stock(tenant, item, qty, unit_cost, supplier=None, expiry_date=None,
+                  user=None, reference='BILL'):
+    """
+    รับวัตถุดิบเข้าสต็อกแบบไม่ผูก PO (เช่น จากการสแกนบิล/ซื้อสด)
+    สร้าง LotBatch + StockMovement (in) + อัปเดตสต็อกและต้นทุนล่าสุด
+    """
+    from .models import LotBatch, StockMovement, PriceHistory
+
+    qty = Decimal(str(qty))
+    unit_cost = Decimal(str(unit_cost))
+    if qty <= 0:
+        return None
+    today = timezone.localdate()
+
+    LotBatch.objects.create(
+        tenant=tenant, item=item,
+        lot_number=f"{reference}-{(item.code or item.name[:6])}",
+        received_date=today, expiry_date=expiry_date or None,
+        quantity=qty, cost_per_unit=unit_cost, supplier=supplier,
+    )
+
+    # บันทึกประวัติราคาถ้าราคาเปลี่ยน
+    old = item.cost_per_unit or ZERO
+    if old > 0 and unit_cost != old:
+        PriceHistory.objects.create(
+            tenant=tenant, item=item, old_price=old, new_price=unit_cost,
+            change_pct=((unit_cost - old) / old) * 100,
+            recorded_by=user, notes='อัปเดตจากการสแกนบิล',
+        )
+
+    item.current_stock = (item.current_stock or ZERO) + qty
+    item.cost_per_unit = unit_cost  # อัปเดตเป็นราคาล่าสุดจากบิล
+    if supplier and not item.default_supplier:
+        item.default_supplier = supplier
+    item.save(update_fields=['current_stock', 'cost_per_unit', 'default_supplier'])
+
+    StockMovement.objects.create(
+        tenant=tenant, item=item, movement_type='in', quantity=qty,
+        unit_cost=unit_cost, reference=reference, created_by=user,
+        notes='รับเข้าจากการสแกนบิล',
+    )
+    return item

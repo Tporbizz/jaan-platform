@@ -153,3 +153,6 @@ LINE_NOTIFY_TO = config('LINE_NOTIFY_TO', default='')  # userId/groupId ปล�
 
 # --- Sensibo ---
 SENSIBO_API_KEY = config('SENSIBO_API_KEY', default='')
+
+# --- Anthropic (Claude) — ใช้ AI Studio + สแกนบิลด้วยภาพ ---
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
