@@ -228,3 +228,36 @@ def sensibo_dashboard(request):
         'today_logs': today_logs[:24],
     }
     return render(request, 'reports/sensibo_dashboard.html', context)
+
+
+# =============================================================================
+# File Export — CSV
+# =============================================================================
+
+def sales_export(request):
+    """ดาวน์โหลดยอดขายรายวันเป็น CSV (90 วันล่าสุด)"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    from core.export import csv_response
+    tenant = request.user.tenant
+    since = timezone.localdate() - timezone.timedelta(days=90)
+    records = DailySalesRecord.objects.filter(tenant=tenant, date__gte=since).order_by('-date')
+    header = ['วันที่', 'รายได้รวม', 'Dine-in', 'เครื่องดื่ม', 'Covers', 'เฉลี่ย/คน', 'Food Cost จริง']
+    rows = ([r.date, r.total_revenue, r.dine_in_revenue, r.beverage_revenue,
+             r.total_covers, r.avg_check, r.food_cost_actual] for r in records)
+    return csv_response(f'sales_{timezone.localdate()}', header, rows)
+
+
+def pl_export(request):
+    """ดาวน์โหลด P&L รายเดือนเป็น CSV"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    from core.export import csv_response
+    tenant = request.user.tenant
+    records = MonthlyPL.objects.filter(tenant=tenant).order_by('-year', '-month')
+    header = ['เดือน', 'ปี', 'รายได้รวม', 'Food Cost จริง', 'ของเสีย', 'ค่าแรง',
+              'กำไรขั้นต้น', 'กำไรสุทธิ', 'Food Cost %', 'Prime Cost %']
+    rows = ([r.month, r.year, r.total_revenue, r.food_cost_actual, r.waste_cost,
+             r.labour_cost, r.gross_profit, r.net_profit, r.food_cost_pct, r.prime_cost_pct]
+            for r in records)
+    return csv_response(f'pl_{timezone.localdate()}', header, rows)

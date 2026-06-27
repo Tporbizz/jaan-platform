@@ -138,6 +138,7 @@ urlpatterns = [
     path('settings/', include(('restaurant.settings_urls', 'settings'), namespace='settings')),
     path('ai/', include(('restaurant.ai_urls', 'ai'), namespace='ai')),
     path('api/accounts/', include('accounts.urls', namespace='accounts')),
+    path('api/v1/', include('api.urls', namespace='api')),
 ]
 
 if settings.DEBUG:

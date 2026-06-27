@@ -120,6 +120,39 @@ def stock_dashboard(request):
 # =============================================================================
 
 @require_stock
+def stock_export(request):
+    """ดาวน์โหลดรายการวัตถุดิบเป็น CSV (ตามตัวกรองที่เลือก)"""
+    from core.export import csv_response
+    from django.db.models import Q
+
+    tenant = request.user.tenant
+    items = Item.objects.filter(tenant=tenant, is_active=True).select_related('category', 'unit', 'default_supplier')
+    q = request.GET.get('q', '').strip()
+    cat_id = request.GET.get('cat', '').strip()
+    status = request.GET.get('status', '').strip()
+    if q:
+        items = items.filter(Q(name__icontains=q) | Q(code__icontains=q))
+    if cat_id:
+        items = items.filter(category_id=cat_id)
+    if status == 'low':
+        items = items.filter(current_stock__lt=F('min_stock'))
+    elif status == 'out':
+        items = items.filter(current_stock__lte=0)
+    items = items.order_by('category__name', 'name')
+
+    status_label = {'ok': 'ปกติ', 'low': 'ต่ำ', 'out': 'หมด', 'over': 'เกิน'}
+    header = ['รหัส', 'ชื่อ', 'หมวด', 'คงเหลือ', 'หน่วย', 'ขั้นต่ำ', 'ราคา/หน่วย', 'มูลค่า', 'ผู้จำหน่าย', 'สถานะ']
+    rows = ([
+        it.code, it.name, it.category.name if it.category else '',
+        it.current_stock, it.unit.abbreviation if it.unit else '',
+        it.min_stock, it.cost_per_unit, it.stock_value,
+        it.default_supplier.name if it.default_supplier else '',
+        status_label.get(it.stock_status, it.stock_status),
+    ] for it in items)
+    return csv_response(f'stock_{timezone.localdate()}', header, rows)
+
+
+@require_stock
 def reorder_list(request):
     tenant = request.user.tenant
     if not tenant:

@@ -9,6 +9,7 @@ class LoginRequiredMiddleware:
         '/logout/',
         '/health/',
         '/admin/login/',
+        '/api/',  # API ใช้ JWT/DRF auth เอง — คืน 401 JSON ไม่ redirect
     )
 
     def __init__(self, get_response):
