@@ -13,6 +13,10 @@ services:
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
       python manage.py migrate
+      python manage.py setup_production
+      python manage.py import_market_list
+      python manage.py import_recipes
+      python manage.py link_menu_recipes
     startCommand: gunicorn jaan_platform.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: DJANGO_SETTINGS_MODULE
