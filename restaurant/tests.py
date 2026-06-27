@@ -307,3 +307,27 @@ class BillScanReceiveTest(TestCase):
     def test_kitchen_can_access_scan(self):
         self.client.force_login(self.kt)
         self.assertEqual(self.client.get('/procurement/scan/').status_code, 200)
+
+
+class RecipeImportTest(TestCase):
+    """นำเข้าสูตรอาหาร 50 เมนูจากไฟล์"""
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='recimp')
+
+    def test_import_links_menu_to_recipe(self):
+        from django.core.management import call_command
+        from restaurant.models import MenuItem, Recipe, RecipeItem
+        call_command('import_recipes', tenant=self.tenant.id, verbosity=0)
+        self.assertGreaterEqual(MenuItem.objects.filter(tenant=self.tenant, recipe__isnull=False).count(), 45)
+        self.assertGreaterEqual(Recipe.objects.filter(tenant=self.tenant).count(), 45)
+        self.assertGreater(RecipeItem.objects.filter(recipe__tenant=self.tenant).count(), 100)
+
+    def test_import_idempotent(self):
+        from django.core.management import call_command
+        from restaurant.models import RecipeItem
+        call_command('import_recipes', tenant=self.tenant.id, verbosity=0)
+        n1 = RecipeItem.objects.filter(recipe__tenant=self.tenant).count()
+        call_command('import_recipes', tenant=self.tenant.id, verbosity=0)
+        n2 = RecipeItem.objects.filter(recipe__tenant=self.tenant).count()
+        self.assertEqual(n1, n2)  # รันซ้ำไม่เพิ่มส่วนผสมซ้ำ
