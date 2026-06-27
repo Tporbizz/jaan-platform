@@ -28,11 +28,13 @@ def pos_dashboard(request):
 
     today = timezone.localdate()
 
-    # --- Today's sales ---
-    today_orders = Order.objects.filter(tenant=tenant, status='paid', opened_at__date=today)
-    today_revenue = sum(o.total for o in today_orders)
-    today_count = today_orders.count()
-    today_covers = sum(o.guest_count for o in today_orders)
+    # --- Today's sales (aggregate ครั้งเดียว กัน N+1) ---
+    today_agg = Order.objects.filter(
+        tenant=tenant, status='paid', opened_at__date=today,
+    ).aggregate(rev=Sum('total'), cov=Sum('guest_count'), cnt=Count('id'))
+    today_revenue = today_agg['rev'] or Decimal('0')
+    today_count = today_agg['cnt'] or 0
+    today_covers = today_agg['cov'] or 0
     avg_check = today_revenue / today_covers if today_covers else 0
 
     # --- Monthly sales ---
@@ -40,9 +42,10 @@ def pos_dashboard(request):
         tenant=tenant, status='paid',
         opened_at__year=today.year, opened_at__month=today.month,
     )
-    month_revenue = sum(o.total for o in month_orders)
-    month_count = month_orders.count()
-    month_covers = sum(o.guest_count for o in month_orders)
+    month_agg = month_orders.aggregate(rev=Sum('total'), cov=Sum('guest_count'), cnt=Count('id'))
+    month_revenue = month_agg['rev'] or Decimal('0')
+    month_count = month_agg['cnt'] or 0
+    month_covers = month_agg['cov'] or 0
 
     # --- KPI targets ---
     kpi = KPITarget.objects.filter(tenant=tenant, month=today.month, year=today.year).first()
@@ -94,7 +97,7 @@ def pos_dashboard(request):
     # --- High margin menus (push recommendations) ---
     high_margin = MenuItem.objects.filter(
         tenant=tenant, is_available=True, recipe__isnull=False,
-    ).select_related('recipe')
+    ).select_related('recipe').prefetch_related('recipe__ingredients__item')
     push_menus = []
     for m in high_margin:
         fc = m.food_cost_pct

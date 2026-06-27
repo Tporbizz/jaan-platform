@@ -230,7 +230,9 @@ def menu_list(request):
         return redirect('login')
 
     tenant = request.user.tenant
-    menus = MenuItem.objects.filter(tenant=tenant).select_related('recipe')
+    menus = (MenuItem.objects.filter(tenant=tenant)
+             .select_related('recipe')
+             .prefetch_related('recipe__ingredients__item'))
     recipes = Recipe.objects.filter(tenant=tenant)
 
     context = {
