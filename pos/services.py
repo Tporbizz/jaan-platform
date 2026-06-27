@@ -247,3 +247,61 @@ def campaign_progress(campaign):
         'total_pct': min(round(total_sold / total_target * 100), 100) if total_target else 0,
         'total_commission': sum(s['commission'] for s in staff.values()),
     }
+
+
+# =============================================================================
+# Staff Performance — ข้อมูลผลงานพนักงานสำหรับ AI โค้ช
+# =============================================================================
+
+def staff_performance(tenant, days=30):
+    """
+    สรุปผลงานขายของพนักงานแต่ละคน N วันล่าสุด (จาก order.created_by)
+    คืน list เรียงตามยอดขาย: [{user, name, orders, revenue, covers, avg_check, top_category, items_sold}]
+    """
+    from django.utils import timezone
+    from collections import defaultdict
+    from .models import Order, OrderItem
+
+    since = timezone.localdate() - timezone.timedelta(days=days)
+    orders = (Order.objects.filter(tenant=tenant, status='paid', opened_at__date__gte=since)
+              .select_related('created_by'))
+
+    stats = defaultdict(lambda: {'orders': 0, 'revenue': ZERO, 'covers': 0, 'user': None})
+    for o in orders:
+        if not o.created_by:
+            continue
+        s = stats[o.created_by_id]
+        s['user'] = o.created_by
+        s['orders'] += 1
+        s['revenue'] += o.total or ZERO
+        s['covers'] += o.guest_count or 0
+
+    # หมวดเมนูที่ขายเด่นต่อคน
+    cat_by_staff = defaultdict(lambda: defaultdict(int))
+    line_items = (OrderItem.objects.filter(
+        order__tenant=tenant, order__status='paid',
+        order__opened_at__date__gte=since, is_voided=False,
+    ).select_related('order', 'menu_item'))
+    for oi in line_items:
+        uid = oi.order.created_by_id
+        if uid:
+            cat_by_staff[uid][oi.menu_item.get_menu_category_display()] += oi.quantity
+
+    result = []
+    for uid, s in stats.items():
+        cats = cat_by_staff.get(uid, {})
+        top_cat = max(cats, key=cats.get) if cats else '-'
+        items_sold = sum(cats.values())
+        result.append({
+            'user': s['user'],
+            'name': (s['user'].get_full_name() or s['user'].username) if s['user'] else 'ไม่ระบุ',
+            'orders': s['orders'],
+            'revenue': s['revenue'],
+            'covers': s['covers'],
+            'avg_check': (s['revenue'] / s['covers']) if s['covers'] else ZERO,
+            'items_sold': items_sold,
+            'top_category': top_cat,
+            'categories': dict(sorted(cats.items(), key=lambda x: -x[1])),
+        })
+    result.sort(key=lambda x: -x['revenue'])
+    return result

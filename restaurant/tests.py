@@ -331,3 +331,33 @@ class RecipeImportTest(TestCase):
         call_command('import_recipes', tenant=self.tenant.id, verbosity=0)
         n2 = RecipeItem.objects.filter(recipe__tenant=self.tenant).count()
         self.assertEqual(n1, n2)  # รันซ้ำไม่เพิ่มส่วนผสมซ้ำ
+
+
+class CoachTest(TestCase):
+    """AI โค้ชพนักงาน — สิทธิ์ + คำแนะนำ (demo mode)"""
+
+    def setUp(self):
+        from accounts.models import User
+        from pos.models import Table, Order, OrderItem
+        from restaurant.models import MenuItem
+        self.tenant = Tenant.objects.create(name='ร้าน', slug='coach')
+        self.mgr = User.objects.create_user(username='m', password='x', tenant=self.tenant, role='manager', department='manager')
+        self.fb = User.objects.create_user(username='f', password='x', tenant=self.tenant, role='staff', department='fb')
+        self.seller = User.objects.create_user(username='s', password='x', tenant=self.tenant, role='staff', department='fb')
+        table = Table.objects.create(tenant=self.tenant, number='1')
+        menu = MenuItem.objects.create(tenant=self.tenant, name='ผัดไทย', selling_price=Decimal('120'))
+        o = Order.objects.create(tenant=self.tenant, table=table, order_number='C1', guest_count=2, total=Decimal('240'), status='paid', created_by=self.seller)
+        OrderItem.objects.create(order=o, menu_item=menu, quantity=2, unit_price=Decimal('120'))
+
+    def test_coach_page_manager_only(self):
+        self.client.force_login(self.fb)
+        self.assertEqual(self.client.get('/ai/coach/').status_code, 403)
+        self.client.force_login(self.mgr)
+        self.assertEqual(self.client.get('/ai/coach/').status_code, 200)
+
+    def test_suggest_returns_tips(self):
+        import json
+        self.client.force_login(self.mgr)
+        r = self.client.post('/ai/coach/suggest/', data=json.dumps({'user_id': self.seller.id}), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        self.assertGreaterEqual(len(r.json()['tips']), 3)

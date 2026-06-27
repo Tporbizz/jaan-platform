@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}AI โค้ชพนักงาน — Jaan{% endblock %}
+{% block extra_head %}
+<style>
+    .card { background: white; border-radius: 1.25rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: transform .15s, box-shadow .15s; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .rank-badge { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; }
+    .r1 { background: #1a1a2e; color: #F5C542; }
+    .r2 { background: #e8ddd3; color: #1a1a2e; }
+    .r3 { background: #f0e0cc; color: #6b5b45; }
+    .rx { background: #f7f1e8; color: #9b8a72; }
+    .btn-ai { background: linear-gradient(135deg,#1a1a2e,#2d2d4a); color: #F5C542; font-weight: 800; border-radius: 0.8rem; padding: 0.6rem 1.2rem; font-size: 0.95rem; }
+    .btn-ai:hover { filter: brightness(1.15); }
+    .tip { background: #fffdf5; border: 1.5px solid #f0e0cc; border-radius: 0.8rem; padding: 0.8rem 1rem; opacity: 0; transform: translateY(8px); animation: rise .35s forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    .spinner { width: 18px; height: 18px; border: 2.5px solid #F5C54255; border-top-color: #F5C542; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex">
+    {% include 'includes/sidebar.html' with active='coach' %}
+
+    <main class="flex-1 ml-[72px] p-6 md:p-8 max-w-[1100px]">
+        <div class="mb-6">
+            <h1 class="text-3xl font-extrabold text-gray-900">AI โค้ชพนักงาน</h1>
+            <p class="text-gray-400 mt-1 text-lg">ดูผลงานขายแต่ละคน 30 วันล่าสุด แล้วให้ AI ช่วยแนะนำพัฒนาทีม</p>
+            {% if not has_api %}
+            <div class="mt-2 text-sm text-amber-700">โหมดพื้นฐาน (ยังไม่ตั้ง ANTHROPIC_API_KEY) — ใส่ key เพื่อให้ AI แนะนำแบบเฉพาะคน</div>
+            {% endif %}
+        </div>
+
+        {% if perf %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for p in perf %}
+            <div class="card" data-user="{{ p.user.id }}">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="rank-badge {% if forloop.counter == 1 %}r1{% elif forloop.counter == 2 %}r2{% elif forloop.counter == 3 %}r3{% else %}rx{% endif %}">{{ forloop.counter }}</div>
+                        <div>
+                            <div class="text-lg font-extrabold text-gray-900">{{ p.name }}</div>
+                            <div class="text-sm text-gray-400">ขายเด่น: {{ p.top_category }}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-extrabold text-gray-900">฿{{ p.revenue|floatformat:0 }}</div>
+                        <div class="text-xs text-gray-400">{{ p.orders }} ออเดอร์ · เฉลี่ย ฿{{ p.avg_check|floatformat:0 }}/คน</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mt-4">
+                    <span class="text-sm text-gray-500">{{ p.items_sold }} จานที่ขาย · {{ p.covers }} ลูกค้า</span>
+                    <button class="btn-ai" onclick="askCoach({{ p.user.id }}, this)">ขอคำแนะนำ AI</button>
+                </div>
+                <div class="tips mt-3 space-y-2"></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card text-center py-16 text-gray-400 text-lg">ยังไม่มีข้อมูลการขายของพนักงานใน 30 วันล่าสุด</div>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+const csrf = '{{ csrf_token }}';
+function askCoach(userId, btn) {
+    const card = btn.closest('.card');
+    const box = card.querySelector('.tips');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> กำลังวิเคราะห์...';
+    box.innerHTML = '';
+    fetch("{% url 'ai:coach_suggest' %}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ user_id: userId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'ขอคำแนะนำอีกครั้ง';
+        if (!data.ok) { box.innerHTML = '<div class="text-sm text-red-500">' + (data.error || 'ผิดพลาด') + '</div>'; return; }
+        (data.tips || []).forEach((t, i) => {
+            const d = document.createElement('div');
+            d.className = 'tip'; d.style.animationDelay = (i * 0.08) + 's';
+            d.innerHTML = '<div class="font-bold text-gray-800">' + (t.title || '') + '</div><div class="text-sm text-gray-600 mt-0.5">' + (t.detail || '') + '</div>';
+            box.appendChild(d);
+        });
+        if (data.demo) {
+            const note = document.createElement('div');
+            note.className = 'text-xs text-gray-300 mt-1'; note.textContent = '* คำแนะนำพื้นฐาน — ตั้ง API key เพื่อให้ AI วิเคราะห์ลึกขึ้น';
+            box.appendChild(note);
+        }
+    })
+    .catch(e => { btn.disabled = false; btn.textContent = 'ขอคำแนะนำ AI'; box.innerHTML = '<div class="text-sm text-red-500">ผิดพลาด</div>'; });
+}
+</script>
+{% endblock %}
